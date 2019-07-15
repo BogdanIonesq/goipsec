@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"net"
 )
 
 func main() {
-	if handle, err := pcap.OpenOffline("/home/bogdan/bsc-thesis/pcap-files/UDP-hello.pcap"); err != nil {
+	if handle, err := pcap.OpenOffline("/home/bogdan/bsc-thesis/pcap-files/IPv6-ping.pcap"); err != nil {
 		panic(err)
 	} else {
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
@@ -18,8 +20,51 @@ func main() {
 	}
 }
 
-func handlePacket (packet gopacket.Packet) {
-	for _, layer := range packet.Layers() {
-		fmt.Println("PACKET LAYER:", layer.LayerType())
+func handlePacket(packet gopacket.Packet) {
+	data := packet.Data()[14:]
+
+	ipsecPacket := gopacket.NewSerializeBuffer()
+	err := gopacket.SerializeLayers(ipsecPacket, gopacket.SerializeOptions{},
+		&layers.Ethernet{
+			SrcMAC:       net.HardwareAddr{0x88, 0xb1, 0x11, 0x61, 0x79, 0x7f},
+			DstMAC:       net.HardwareAddr{0x08, 0x00, 0x27, 0x11, 0x27, 0x9f},
+			EthernetType: layers.EthernetTypeIPv6,
+		},
+		&layers.IPv6{
+			Version:      6,
+			TrafficClass: 0,
+			FlowLabel:    0,
+			Length:       8 + uint16(len(data)),
+			NextHeader:   layers.IPProtocolESP,
+			HopLimit:     64,
+			SrcIP:        net.ParseIP("fe80::f14:e938:f365:86bf"),
+			DstIP:        net.ParseIP("fe80::6e42:c109:74ed:6dab"),
+		},
+		// SPI
+		gopacket.Payload([]byte{1, 2, 3, 4}),
+		// Sequence Number
+		gopacket.Payload([]byte{1, 2, 3, 4}),
+		gopacket.Payload(data),
+	)
+
+	if err != nil {
+		fmt.Println("Packet creation error: ", err)
 	}
+
+	// write to wire
+	handle, err := pcap.OpenLive("wlp4s0", 1024, false, pcap.BlockForever)
+
+	if err != nil {
+		fmt.Println("pcap open error: ", err)
+	}
+	defer handle.Close()
+
+	err = handle.WritePacketData(ipsecPacket.Bytes())
+
+	if err != nil {
+		fmt.Println("Send packet error: ", err)
+	}
+
+	fmt.Println("done!")
+
 }
