@@ -9,18 +9,34 @@ import (
 )
 
 func main() {
+	sendPacket()
+	//listenPackets()
+}
+
+func listenPackets() {
+	if handle, err := pcap.OpenLive("enp0s3", 1600, true, pcap.BlockForever); err != nil {
+		panic(err)
+	} else if err := handle.SetBPFFilter("esp"); err != nil {  // optional
+		panic(err)
+	} else {
+		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+		for packet := range packetSource.Packets() {
+			fmt.Println(packet)
+		}
+	}
+}
+
+func sendPacket() {
+	var packet gopacket.Packet
+
 	if handle, err := pcap.OpenOffline("/home/bogdan/bsc-thesis/pcap-files/IPv6-ping.pcap"); err != nil {
 		panic(err)
 	} else {
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
-		for packet := range packetSource.Packets() {
-			handlePacket(packet)
-		}
+		packet = <-packetSource.Packets()
 	}
-}
 
-func handlePacket(packet gopacket.Packet) {
 	data := packet.Data()[14:]
 
 	ipsecPacket := gopacket.NewSerializeBuffer()
@@ -66,5 +82,4 @@ func handlePacket(packet gopacket.Packet) {
 	}
 
 	fmt.Println("done!")
-
 }
