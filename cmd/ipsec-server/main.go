@@ -22,6 +22,24 @@ func listenPackets() {
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		for packet := range packetSource.Packets() {
 			fmt.Println(packet)
+
+			fmt.Println("writing!")
+
+			forwardPacket := gopacket.NewSerializeBuffer()
+			err := gopacket.SerializeLayers(forwardPacket, gopacket.SerializeOptions{},
+				&layers.Ethernet{
+					SrcMAC:       net.HardwareAddr{0x88, 0xb1, 0x11, 0x61, 0x79, 0x7f},
+					DstMAC:       net.HardwareAddr{0x08, 0x00, 0x27, 0x11, 0x27, 0x9f},
+					EthernetType: layers.EthernetTypeIPv6,
+				},
+				gopacket.Payload(packet.Data()[62:]),
+			)
+
+			if err != nil {
+				fmt.Println("Packet creation error: ", err)
+			}
+
+			_ = handle.WritePacketData(forwardPacket.Bytes())
 		}
 	}
 }
