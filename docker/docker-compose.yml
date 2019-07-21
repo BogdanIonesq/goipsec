@@ -1,0 +1,47 @@
+version: "3.7"
+
+services:
+
+  client:
+    image: goipsec
+    container_name: client
+    cap_add:
+      - ALL
+    volumes:
+      - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
+    networks: 
+      default:
+        ipv4_address: "173.17.17.10"
+        ipv6_address: "2001:db8:23:42:1::1"
+
+  local-gateway:
+    image: goipsec
+    container_name: local-gateway
+    cap_add:
+      - ALL
+    volumes:
+      - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
+    networks: 
+      default:
+        ipv4_address: "173.17.17.11"
+        ipv6_address: "2001:db8:23:42:1::2"
+
+  remote-gateway:
+    image: goipsec
+    container_name: remote-gateway
+    cap_add:
+      - ALL
+    volumes:
+      - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
+    networks: 
+      default:
+        ipv4_address: "173.17.17.12"
+        ipv6_address: "2001:db8:23:42:1::3"
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+        - subnet: "173.17.17.0/24"
+        - subnet: "2001:db8:23:42:1::/80"
