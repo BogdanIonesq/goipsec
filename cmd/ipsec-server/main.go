@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -19,7 +20,8 @@ const (
 )
 
 func main() {
-	listen()
+	//listen()
+	fmt.Println([4]byte{})
 }
 
 func listen() {
@@ -29,7 +31,7 @@ func listen() {
 	}
 
 	// sniff only UDP/ESP traffic for now
-	err = handle.SetBPFFilter("udp or esp")
+	err = handle.SetBPFFilter("(udp and dst host 192.168.2.221) or esp")
 	if err != nil {
 		panic(err)
 	}
@@ -38,25 +40,37 @@ func listen() {
 	send := make(chan gopacket.SerializeBuffer)
 	recv := gopacket.NewPacketSource(handle, handle.LinkType()).Packets()
 
-	select {
-	case packet := <-recv:
-		if packet.Layer(layers.LayerTypeUDP) != nil {
-			go encryptPacket(packet, send)
-		} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
-			go decryptPacket(packet, send)
-		}
-	case packet := <-send:
-		err := handle.WritePacketData(packet.Bytes())
+	// esp sequence number counter
+	var seq uint32
 
-		if err != nil {
-			fmt.Println("Send packet error: ", err)
+	for {
+		select {
+		case packet := <-recv:
+			if packet.Layer(layers.LayerTypeUDP) != nil {
+				fmt.Println("-> got UDP packet!")
+				seq++
+				go encryptPacket(packet, send, seq)
+			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
+				fmt.Println("-> got ESP packet!")
+				go decryptPacket(packet, send)
+			}
+		case packet := <-send:
+			err := handle.WritePacketData(packet.Bytes())
+			fmt.Println("-> sent packet!")
+
+			if err != nil {
+				fmt.Println("Send packet error: ", err)
+			}
 		}
 	}
+
 }
 
-func encryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
+func encryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, seq uint32) {
 	srcMAC, _ := net.ParseMAC(LocalGatewayMAC)
 	dstMAC, _ := net.ParseMAC(RemoteGatewayMAC)
+	seqn := []byte{0, 0, 0, 0}
+	binary.BigEndian.PutUint32(seqn, seq)
 
 	encryptedPacket := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
@@ -78,7 +92,7 @@ func encryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 		// SPI
 		gopacket.Payload([]byte{1, 2, 3, 4}),
 		// Sequence Number
-		gopacket.Payload([]byte{1, 2, 3, 4}),
+		gopacket.Payload(seqn),
 		gopacket.Payload(packet.Data()[NetworkLayerDataOffset:]),
 	)
 
