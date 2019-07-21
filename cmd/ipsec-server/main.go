@@ -10,28 +10,27 @@ import (
 )
 
 const (
-	LocalGatewayMAC              = "08:00:27:ad:c3:95"
-	RemoteGatewayMAC             = "08:00:27:11:27:9f"
-	LocalGatewayAddr             = "fe80::f14:e938:f365:86bf"
-	RemoteGatewayAddr            = "fe80::6e42:c109:74ed:6dab"
+	LocalGatewayMAC              = "02:42:ac:11:00:11"
+	RemoteGatewayMAC             = "02:42:ac:11:00:12"
+	LocalGatewayAddr             = "2001:db8:23:42:1::11"
+	RemoteGatewayAddr            = "2001:db8:23:42:1::12"
 	NetworkLayerDataOffset       = 14
 	TransportLayerDataOffsetIPv4 = 34
 	TransportLayerDataOffsetIPv6 = 54
 )
 
 func main() {
-	//listen()
-	fmt.Println([4]byte{})
+	listen()
 }
 
 func listen() {
-	handle, err := pcap.OpenLive("enp0s3", 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive("eth0", 1600, true, pcap.BlockForever)
 	if err != nil {
 		panic(err)
 	}
 
 	// sniff only UDP/ESP traffic for now
-	err = handle.SetBPFFilter("(udp and dst host 192.168.2.221) or esp")
+	err = handle.SetBPFFilter("(udp and dst host 173.17.17.12) or esp")
 	if err != nil {
 		panic(err)
 	}
