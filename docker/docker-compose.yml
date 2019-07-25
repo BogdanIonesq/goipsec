@@ -3,55 +3,80 @@ version: "2.4"
 services:
 
   client:
-    image: goipsec
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-client
+    image: goipsec-client
     container_name: client
     mac_address: "02:42:ac:11:00:10"
     cap_add:
       - ALL
-    volumes:
-      - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
     depends_on:
-      - local-gateway
-    command: sh -c "ip route add 173.17.17.12/32 via 173.17.17.11 && sleep 2147483647"
+      - client-gateway
+    command: sh -c 'ip route add 173.17.17.13/32 via 173.17.17.11 && sleep 2147483647'
     networks: 
       default:
         ipv4_address: "173.17.17.10"
         ipv6_address: "2001:db8:23:42:1::10"
 
-  local-gateway:
-    image: goipsec
-    container_name: local-gateway
+  client-gateway:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-vpn
+    image: goipsec-gateway
+    container_name: client-gateway
     mac_address: "02:42:ac:11:00:11"
     depends_on:
-      - remote-gateway
+      - vpn-gateway
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
     command: sh -c '
-              echo "net.ipv4.ip_forward = 0" >> /etc/sysctl.conf &&
-              sysctl -p &&
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
-              iptables -I FORWARD -d 173.17.17.12 -j DROP && 
-              tcpdump -vvv -XX udp'
+              iptables -I FORWARD -d 173.17.17.13 -j DROP && 
+              tcpdump -vvv -xx "(udp and src 173.17.17.10) or (esp and src 2001:db8:23:42:1::12)"'
     networks: 
       default:
         ipv4_address: "173.17.17.11"
         ipv6_address: "2001:db8:23:42:1::11"
 
-  remote-gateway:
-    image: goipsec
-    container_name: remote-gateway
+  vpn-gateway:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-vpn
+    image: goipsec-gateway
+    container_name: vpn-gateway
     mac_address: "02:42:ac:11:00:12"
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
-    command: tcpdump -vvv -XX esp
+    command: sh -c '
+              iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
+              iptables -I FORWARD -d 173.17.17.10 -j DROP && 
+              tcpdump -vvv -xx "(udp and src 173.17.17.13) or (esp and src 2001:db8:23:42:1::11)"'
     networks: 
       default:
         ipv4_address: "173.17.17.12"
         ipv6_address: "2001:db8:23:42:1::12"
+
+  server:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-client
+    image: goipsec-client
+    container_name: server
+    mac_address: "02:42:ac:11:00:13"
+    cap_add:
+      - ALL
+    depends_on:
+      - vpn-gateway
+    command: sh -c 'ip route add 173.17.17.10/32 via 173.17.17.12 && tcpdump -vvv -xx "(udp and src 173.17.17.10)"'
+    networks:
+      default:
+        ipv4_address: "173.17.17.13"
+        ipv6_address: "2001:db8:23:42:1::13"
 
 networks:
   default:
