@@ -31,11 +31,12 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
+      - /home/bogdan/bsc-thesis/cmd/ipsec-server/main.go:/ipsec/main.go
+      - /home/bogdan/bsc-thesis/docker/logs/client-gateway-logs.pcap:/ipsec/client-gateway-logs.pcap
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
               iptables -I FORWARD -d 173.17.17.13 -j DROP && 
-              tcpdump -vvv -xx "(udp and src 173.17.17.10) or (esp and src 2001:db8:23:42:1::12)"'
+              tcpdump -w client-gateway-logs.pcap'
     networks: 
       default:
         ipv4_address: "173.17.17.11"
@@ -51,28 +52,31 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/bsc-thesis/cmd/ipsec-server:/ipsec
+      - /home/bogdan/bsc-thesis/cmd/ipsec-server/main.go:/ipsec/main.go
+      - /home/bogdan/bsc-thesis/docker/logs/vpn-gateway-logs.pcap:/ipsec/vpn-gateway-logs.pcap
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
               iptables -I FORWARD -d 173.17.17.10 -j DROP && 
-              tcpdump -vvv -xx "(udp and src 173.17.17.13) or (esp and src 2001:db8:23:42:1::11)"'
+              tcpdump -w vpn-gateway-logs.pcap'
     networks: 
       default:
         ipv4_address: "173.17.17.12"
         ipv6_address: "2001:db8:23:42:1::12"
 
-  server:
+  vpn-server:
     build:
       context: ./dockerfiles
       dockerfile: Dockerfile-client
     image: goipsec-client
-    container_name: server
+    container_name: vpn-server
     mac_address: "02:42:ac:11:00:13"
     cap_add:
       - ALL
+    volumes:
+      - /home/bogdan/bsc-thesis/docker/logs/vpn-server-logs.pcap:/ipsec/vpn-server-logs.pcap
     depends_on:
       - vpn-gateway
-    command: sh -c 'ip route add 173.17.17.10/32 via 173.17.17.12 && tcpdump -vvv -xx "(udp and src 173.17.17.10)"'
+    command: sh -c 'ip route add 173.17.17.10/32 via 173.17.17.12 && tcpdump -w vpn-server-logs.pcap'
     networks:
       default:
         ipv4_address: "173.17.17.13"

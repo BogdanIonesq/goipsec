@@ -30,7 +30,7 @@ func listen() {
 	}
 
 	// sniff only UDP/ESP traffic for now
-	err = handle.SetBPFFilter("(udp and dst host 173.17.17.12) or esp")
+	err = handle.SetBPFFilter("(udp and dst host 173.17.17.13) or esp")
 	if err != nil {
 		panic(err)
 	}
