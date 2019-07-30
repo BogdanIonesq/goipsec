@@ -7,6 +7,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"net"
+	"sync/atomic"
 )
 
 const (
@@ -18,6 +19,8 @@ const (
 	TransportLayerDataOffsetIPv4 = 34
 	TransportLayerDataOffsetIPv6 = 54
 )
+
+var seqn uint32 = 0
 
 func main() {
 	listen()
@@ -39,16 +42,12 @@ func listen() {
 	send := make(chan gopacket.SerializeBuffer)
 	recv := gopacket.NewPacketSource(handle, handle.LinkType()).Packets()
 
-	// esp sequence number counter
-	var seq uint32
-
 	for {
 		select {
 		case packet := <-recv:
 			if packet.Layer(layers.LayerTypeUDP) != nil {
 				fmt.Println("-> got UDP packet!")
-				seq++
-				go encryptPacket(packet, send, seq)
+				go encryptPacket(packet, send)
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
 				fmt.Println("-> got ESP packet!")
 				go decryptPacket(packet, send)
@@ -65,11 +64,12 @@ func listen() {
 
 }
 
-func encryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, seq uint32) {
+func encryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
+	seqnBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(seqnBytes, atomic.AddUint32(&seqn, 1))
+
 	srcMAC, _ := net.ParseMAC(LocalGatewayMAC)
 	dstMAC, _ := net.ParseMAC(RemoteGatewayMAC)
-	seqn := []byte{0, 0, 0, 0}
-	binary.BigEndian.PutUint32(seqn, seq)
 
 	encryptedPacket := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
@@ -91,7 +91,7 @@ func encryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, s
 		// SPI
 		gopacket.Payload([]byte{1, 2, 3, 4}),
 		// Sequence Number
-		gopacket.Payload(seqn),
+		gopacket.Payload(seqnBytes),
 		gopacket.Payload(packet.Data()[NetworkLayerDataOffset:]),
 	)
 

@@ -13,7 +13,11 @@ services:
       - ALL
     depends_on:
       - client-gateway
-    command: sh -c 'ip route add 173.17.17.13/32 via 173.17.17.11 && sleep 2147483647'
+    command: sh -c 'ip route add 173.17.17.13/32 via 173.17.17.11 && 
+              sleep 5 &&
+              (echo -n "hello" | nc -u -w 1 173.17.17.13 6000) &&
+              (echo -n "hello again" | nc -u -w 1 173.17.17.13 6000) &&
+              (echo -n "final hello" | nc -u -w 1 173.17.17.13 6000)'
     networks: 
       default:
         ipv4_address: "173.17.17.10"
@@ -36,6 +40,8 @@ services:
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
               iptables -I FORWARD -d 173.17.17.13 -j DROP && 
+              go build main.go &&
+              (./main &) &&
               tcpdump -w client-gateway-logs.pcap'
     networks: 
       default:
