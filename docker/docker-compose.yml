@@ -35,7 +35,7 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/bsc-thesis/cmd/ipsec-server/main.go:/ipsec/main.go
+      - /home/bogdan/bsc-thesis/cmd/ipsec/main.go:/ipsec/main.go
       - /home/bogdan/bsc-thesis/docker/logs/client-gateway-logs.pcap:/ipsec/client-gateway-logs.pcap
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
@@ -58,7 +58,7 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/bsc-thesis/cmd/ipsec-server/main.go:/ipsec/main.go
+      - /home/bogdan/bsc-thesis/cmd/ipsec/main.go:/ipsec/main.go
       - /home/bogdan/bsc-thesis/docker/logs/vpn-gateway-logs.pcap:/ipsec/vpn-gateway-logs.pcap
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
