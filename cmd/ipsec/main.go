@@ -1,26 +1,12 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"net"
-	"sync/atomic"
+	"goipsec/pkg/wrap"
 )
-
-const (
-	LocalGatewayMAC              = "02:42:ac:11:00:11"
-	RemoteGatewayMAC             = "02:42:ac:11:00:12"
-	LocalGatewayAddr             = "2001:db8:23:42:1::11"
-	RemoteGatewayAddr            = "2001:db8:23:42:1::12"
-	NetworkLayerDataOffset       = 14
-	TransportLayerDataOffsetIPv4 = 34
-	TransportLayerDataOffsetIPv6 = 54
-)
-
-var seqn uint32 = 0
 
 func main() {
 	listen()
@@ -47,10 +33,10 @@ func listen() {
 		case packet := <-recv:
 			if packet.Layer(layers.LayerTypeUDP) != nil {
 				fmt.Println("-> got UDP packet!")
-				go encryptPacket(packet, send)
+				go wrap.EncryptPacket(packet, send)
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
 				fmt.Println("-> got ESP packet!")
-				go decryptPacket(packet, send)
+				go wrap.DecryptPacket(packet, send)
 			}
 		case packet := <-send:
 			err := handle.WritePacketData(packet.Bytes())
@@ -62,51 +48,4 @@ func listen() {
 		}
 	}
 
-}
-
-func encryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
-	seqnBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(seqnBytes, atomic.AddUint32(&seqn, 1))
-
-	srcMAC, _ := net.ParseMAC(LocalGatewayMAC)
-	dstMAC, _ := net.ParseMAC(RemoteGatewayMAC)
-
-	encryptedPacket := gopacket.NewSerializeBuffer()
-	err := gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
-		&layers.Ethernet{
-			SrcMAC:       srcMAC,
-			DstMAC:       dstMAC,
-			EthernetType: layers.EthernetTypeIPv6,
-		},
-		&layers.IPv6{
-			Version:      6,
-			TrafficClass: 0,
-			FlowLabel:    0,
-			Length:       8 + uint16(len(packet.Data()[NetworkLayerDataOffset:])),
-			NextHeader:   layers.IPProtocolESP,
-			HopLimit:     64,
-			SrcIP:        net.ParseIP(LocalGatewayAddr),
-			DstIP:        net.ParseIP(RemoteGatewayAddr),
-		},
-		// SPI
-		gopacket.Payload([]byte{1, 2, 3, 4}),
-		// Sequence Number
-		gopacket.Payload(seqnBytes),
-		gopacket.Payload(packet.Data()[NetworkLayerDataOffset:]),
-	)
-
-	if err != nil {
-		fmt.Println("Packet creation error: ", err)
-	} else {
-		send <- encryptedPacket
-	}
-}
-
-func decryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
-	decryptedPacket := gopacket.NewSerializeBuffer()
-	_ = gopacket.SerializeLayers(decryptedPacket, gopacket.SerializeOptions{},
-		gopacket.Payload(packet.Data()[TransportLayerDataOffsetIPv6:]),
-	)
-
-	send <- decryptedPacket
 }
