@@ -6,6 +6,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"goipsec/global"
+	"log"
 	"net"
 	"sync/atomic"
 )
@@ -54,9 +55,20 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 }
 
 func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
+	srcMAC, _ := net.ParseMAC(global.VPNGatewayMAC)
+	dstMAC, _ := net.ParseMAC(global.VPNServerMAC)
+
+	log.Println(srcMAC)
+	log.Println(dstMAC)
+
 	decryptedPacket := gopacket.NewSerializeBuffer()
 	_ = gopacket.SerializeLayers(decryptedPacket, gopacket.SerializeOptions{},
-		gopacket.Payload(packet.Data()[global.TransportLayerDataOffsetIPv6:]),
+		&layers.Ethernet{
+			SrcMAC:       srcMAC,
+			DstMAC:       dstMAC,
+			EthernetType: layers.EthernetTypeIPv4,
+		},
+		gopacket.Payload(packet.Data()[(global.TransportLayerDataOffsetIPv6+8):]),
 	)
 
 	send <- decryptedPacket

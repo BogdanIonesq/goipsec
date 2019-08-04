@@ -13,6 +13,10 @@ const (
 	VPNGatewayIPv4 = "173.17.17.12"
 	VPNGatewayIPv6 = "2001:db8:23:42:1::12"
 
+	VPNServerMAC  = "02:42:ac:11:00:13"
+	VPNServerIPv4 = "173.17.17.13"
+	VPNServerIPv6 = "2001:db8:23:42:1::13"
+
 	NetworkLayerDataOffset       = 14
 	TransportLayerDataOffsetIPv4 = 34
 	TransportLayerDataOffsetIPv6 = 54

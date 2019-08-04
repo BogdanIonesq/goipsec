@@ -39,7 +39,6 @@ services:
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
               iptables -I FORWARD -d 173.17.17.13 -j DROP && 
-              go build /go/src/goipsec/cmd/ipsec/main.go &&
               (/go/src/goipsec/cmd/ipsec/main &) &&
               tcpdump -w /go/src/goipsec/docker/logs/client-gateway-logs.pcap'
     networks: 
@@ -57,11 +56,13 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec/docker/logs/vpn-gateway-logs.pcap:/ipsec/vpn-gateway-logs.pcap
+      - /home/bogdan/.go/src/goipsec:/go/src/goipsec
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
               iptables -I FORWARD -d 173.17.17.10 -j DROP && 
-              tcpdump -w vpn-gateway-logs.pcap'
+              go build /go/src/goipsec/cmd/ipsec/main.go &&
+              (/go/src/goipsec/cmd/ipsec/main &) &&
+              tcpdump -w /go/src/goipsec/docker/logs/vpn-gateway-logs.pcap'
     networks: 
       default:
         ipv4_address: "173.17.17.12"
