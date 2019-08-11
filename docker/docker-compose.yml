@@ -31,7 +31,8 @@ services:
     container_name: client-gateway
     mac_address: "02:42:ac:11:00:11"
     depends_on:
-      - vpn-gateway
+      vpn-gateway:
+        condition: service_healthy
     cap_add:
       - ALL
     volumes:
@@ -60,9 +61,15 @@ services:
     command: sh -c '
               iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
               iptables -I FORWARD -d 173.17.17.10 -j DROP && 
-              go build /go/src/goipsec/cmd/ipsec/main.go &&
+              rm -f /go/src/goipsec/cmd/ipsec/main &&
+              cd /go/src/goipsec/cmd/ipsec/ && go build main.go &&
               (/go/src/goipsec/cmd/ipsec/main &) &&
               tcpdump -w /go/src/goipsec/docker/logs/vpn-gateway-logs.pcap'
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
+      interval: 1s
+      timeout: 3s
+      retries: 3
     networks: 
       default:
         ipv4_address: "173.17.17.12"
@@ -78,10 +85,10 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec/docker/logs/vpn-server-logs.pcap:/ipsec/vpn-server-logs.pcap
+      - /home/bogdan/.go/src/goipsec:/go/src/goipsec
     depends_on:
       - vpn-gateway
-    command: sh -c 'ip route add 173.17.17.10/32 via 173.17.17.12 && tcpdump -w vpn-server-logs.pcap'
+    command: sh -c 'ip route add 173.17.17.10/32 via 173.17.17.12 && tcpdump -w /go/src/goipsec/docker/logs/vpn-server-logs.pcap'
     networks:
       default:
         ipv4_address: "173.17.17.13"

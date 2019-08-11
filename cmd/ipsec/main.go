@@ -40,10 +40,10 @@ func listen() {
 			}
 		case packet := <-send:
 			err := handle.WritePacketData(packet.Bytes())
-			fmt.Println("-> sent packet!")
-
 			if err != nil {
 				fmt.Println("Send packet error: ", err)
+			} else {
+				fmt.Println("-> sent packet!")
 			}
 		}
 	}
