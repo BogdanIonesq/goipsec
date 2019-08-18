@@ -5,94 +5,79 @@ services:
   client:
     build:
       context: ./dockerfiles
-      dockerfile: Dockerfile-client
+      dockerfile: client
     image: goipsec-client
     container_name: client
     mac_address: "02:42:ac:11:00:10"
     cap_add:
       - ALL
     depends_on:
-      - client-gateway
-    command: sh -c 'ip route add 173.17.17.13/32 via 173.17.17.11 && 
-              sleep 5 &&
-              (echo -n "hello" | nc -u -w 1 173.17.17.13 6000) &&
-              (echo -n "hello again" | nc -u -w 1 173.17.17.13 6000) &&
-              (echo -n "final hello" | nc -u -w 1 173.17.17.13 6000)'
+      - vpn-gateway
+    command: sh -c 'curl web-server'
     networks: 
       default:
         ipv4_address: "173.17.17.10"
         ipv6_address: "2001:db8:23:42:1::10"
 
-  client-gateway:
-    build:
-      context: ./dockerfiles
-      dockerfile: Dockerfile-vpn
-    image: goipsec-gateway
-    container_name: client-gateway
-    mac_address: "02:42:ac:11:00:11"
-    depends_on:
-      vpn-gateway:
-        condition: service_healthy
-    cap_add:
-      - ALL
-    volumes:
-      - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c '
-              iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
-              iptables -I FORWARD -d 173.17.17.13 -j DROP && 
-              (/go/src/goipsec/cmd/ipsec/main &) &&
-              tcpdump -w /go/src/goipsec/docker/logs/client-gateway-logs.pcap'
-    networks: 
-      default:
-        ipv4_address: "173.17.17.11"
-        ipv6_address: "2001:db8:23:42:1::11"
-
   vpn-gateway:
     build:
       context: ./dockerfiles
-      dockerfile: Dockerfile-vpn
-    image: goipsec-gateway
+      dockerfile: vpn
+    image: goipsec-vpn
     container_name: vpn-gateway
-    mac_address: "02:42:ac:11:00:12"
+    mac_address: "02:42:ac:11:00:20"
+    depends_on:
+      - vpn-server
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c '
-              iptables -t mangle -A POSTROUTING -p icmp --icmp-type redirect -j DROP &&
-              iptables -I FORWARD -d 173.17.17.10 -j DROP && 
-              rm -f /go/src/goipsec/cmd/ipsec/main &&
-              cd /go/src/goipsec/cmd/ipsec/ && go build main.go &&
-              (/go/src/goipsec/cmd/ipsec/main &) &&
-              tcpdump -w /go/src/goipsec/docker/logs/vpn-gateway-logs.pcap'
-    healthcheck:
-      test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
-      interval: 1s
-      timeout: 3s
-      retries: 3
+    command: sh -c 'tcpdump -w /go/src/goipsec/docker/logs/vpn-gateway.pcap'
     networks: 
       default:
-        ipv4_address: "173.17.17.12"
-        ipv6_address: "2001:db8:23:42:1::12"
+        ipv4_address: "173.17.17.20"
+        ipv6_address: "2001:db8:23:42:1::20"
 
   vpn-server:
     build:
       context: ./dockerfiles
-      dockerfile: Dockerfile-client
-    image: goipsec-client
+      dockerfile: vpn
+    image: goipsec-vpn
     container_name: vpn-server
-    mac_address: "02:42:ac:11:00:13"
+    mac_address: "02:42:ac:11:00:30"
+    depends_on:
+      - web-server
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    depends_on:
-      - vpn-gateway
-    command: sh -c 'ip route add 173.17.17.10/32 via 173.17.17.12 && tcpdump -w /go/src/goipsec/docker/logs/vpn-server-logs.pcap'
+    command: sh -c 'rm -f /go/src/goipsec/cmd/ipsec/main && cd /go/src/goipsec/cmd/ipsec/ && go build main.go && tcpdump -w /go/src/goipsec/docker/logs/vpn-server.pcap'
+    # healthcheck:
+    #   test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
+    #   interval: 1s
+    #   timeout: 3s
+    #   retries: 3
+    networks: 
+      default:
+        ipv4_address: "173.17.17.30"
+        ipv6_address: "2001:db8:23:42:1::30"
+
+  web-server:
+    build:
+      context: ./dockerfiles
+      dockerfile: web-server
+    image: goipsec-web-server
+    container_name: web-server
+    mac_address: "02:42:ac:11:00:40"
+    cap_add:
+      - ALL
+    volumes:
+      - /home/bogdan/.go/src/goipsec/docker/logs/web-server.pcap:/ipsec/web-server.pcap
+    command: sh -c 'nginx && tcpdump -w /ipsec/web-server.pcap'
     networks:
       default:
-        ipv4_address: "173.17.17.13"
-        ipv6_address: "2001:db8:23:42:1::13"
+        ipv4_address: "173.17.17.40"
+        ipv6_address: "2001:db8:23:42:1::40"
 
 networks:
   default:

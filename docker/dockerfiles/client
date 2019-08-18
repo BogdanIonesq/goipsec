@@ -1,0 +1,5 @@
+FROM alpine:latest
+
+RUN apk update && apk add tcpdump iptables netcat-openbsd curl
+
+CMD [ "sleep", "2147483647" ]
