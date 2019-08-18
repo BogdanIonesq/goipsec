@@ -13,7 +13,7 @@ services:
       - ALL
     depends_on:
       - vpn-gateway
-    command: sh -c 'curl web-server'
+    command: sh -c 'ip route delete default && ip route add default via 173.17.17.20 && ip route delete 173.17.17.0/24 && ip route show && curl web-server'
     networks: 
       default:
         ipv4_address: "173.17.17.10"
@@ -32,7 +32,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'tcpdump -w /go/src/goipsec/docker/logs/vpn-gateway.pcap'
+    command: sh -c 'iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE && tcpdump -w /go/src/goipsec/docker/logs/vpn-gateway.pcap'
     networks: 
       default:
         ipv4_address: "173.17.17.20"
