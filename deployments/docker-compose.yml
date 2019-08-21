@@ -32,7 +32,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'iptables -I FORWARD -s 173.17.17.10 -j DROP && tcpdump -w /go/src/goipsec/docker/logs/vpn-gateway.pcap'
+    command: sh -c 'iptables -I FORWARD -s 173.17.17.10 -j DROP && tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap'
     networks: 
       default:
         ipv4_address: "173.17.17.20"
@@ -51,7 +51,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'rm -f /go/src/goipsec/cmd/ipsec/main && cd /go/src/goipsec/cmd/ipsec/ && go build main.go && tcpdump -w /go/src/goipsec/docker/logs/vpn-server.pcap'
+    command: sh -c 'rm -f /go/src/goipsec/cmd/ipsec/main && cd /go/src/goipsec/cmd/ipsec/ && go build main.go && tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap'
     # healthcheck:
     #   test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
     #   interval: 1s
@@ -72,7 +72,7 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec/docker/logs/web-server.pcap:/ipsec/web-server.pcap
+      - /home/bogdan/.go/src/goipsec/deployments/logs/web-server.pcap:/ipsec/web-server.pcap
     command: sh -c 'nginx && tcpdump -w /ipsec/web-server.pcap'
     networks:
       default:
