@@ -13,7 +13,12 @@ services:
       - ALL
     depends_on:
       - vpn-gateway
-    command: sh -c 'ip route delete default && ip route add default via 173.17.17.20 && ip route delete 173.17.17.0/24 && ip route show && curl web-server --connect-timeout 5'
+    command: sh -c 'ip route delete default && 
+                    ip route add default via 173.17.17.20 && 
+                    ip route delete 173.17.17.0/24 && 
+                    ip route show &&
+                    sleep 3 && 
+                    curl web-server --connect-timeout 5 -v -4'
     networks: 
       default:
         ipv4_address: "173.17.17.10"
@@ -27,12 +32,15 @@ services:
     container_name: vpn-gateway
     mac_address: "02:42:ac:11:00:20"
     depends_on:
-      - vpn-server
+      vpn-server:
+        condition: service_healthy
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'iptables -I FORWARD -s 173.17.17.10 -j DROP && tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap'
+    command: sh -c 'iptables -I FORWARD -s 173.17.17.10 -j DROP && 
+                    (/go/src/goipsec/cmd/ipsec/main &) &&
+                    tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap'
     networks: 
       default:
         ipv4_address: "173.17.17.20"
@@ -51,12 +59,16 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'rm -f /go/src/goipsec/cmd/ipsec/main && cd /go/src/goipsec/cmd/ipsec/ && go build main.go && tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap'
-    # healthcheck:
-    #   test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
-    #   interval: 1s
-    #   timeout: 3s
-    #   retries: 3
+    command: sh -c 'rm -f /go/src/goipsec/cmd/ipsec/main && 
+                    cd /go/src/goipsec/cmd/ipsec/ && 
+                    go build main.go && 
+                    (./main &) &&
+                    tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap'
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
+      interval: 1s
+      timeout: 3s
+      retries: 3
     networks: 
       default:
         ipv4_address: "173.17.17.30"

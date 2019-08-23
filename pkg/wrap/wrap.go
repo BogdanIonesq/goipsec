@@ -19,8 +19,8 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 	seqnBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(seqnBytes, seqNumber)
 
-	srcMAC, _ := net.ParseMAC(global.ClientGatewayMAC)
-	dstMAC, _ := net.ParseMAC(global.VPNGatewayMAC)
+	srcMAC, _ := net.ParseMAC(global.VPNGatewayMAC)
+	dstMAC, _ := net.ParseMAC(global.VPNServerMAC)
 
 	encryptedPacket := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
@@ -36,8 +36,8 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 			Length:       uint16(8 + len(packet.Data()[global.NetworkLayerDataOffset:])),
 			NextHeader:   layers.IPProtocolESP,
 			HopLimit:     64,
-			SrcIP:        net.ParseIP(global.ClientGatewayIPv6),
-			DstIP:        net.ParseIP(global.VPNGatewayIPv6),
+			SrcIP:        net.ParseIP(global.VPNGatewayIPv6),
+			DstIP:        net.ParseIP(global.VPNServerIPv6),
 		},
 		// SPI
 		gopacket.Payload([]byte{1, 2, 3, 4}),
@@ -54,8 +54,8 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 }
 
 func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
-	srcMAC, _ := net.ParseMAC(global.VPNGatewayMAC)
-	dstMAC, _ := net.ParseMAC(global.VPNServerMAC)
+	srcMAC, _ := net.ParseMAC(global.VPNServerMAC)
+	dstMAC, _ := net.ParseMAC(global.WebServerMAC)
 
 	decryptedPacket := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(decryptedPacket, gopacket.SerializeOptions{},

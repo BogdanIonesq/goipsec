@@ -5,17 +5,17 @@ const (
 	ClientIPv4 = "173.17.17.10"
 	ClientIPv6 = "2001:db8:23:42:1::10"
 
-	ClientGatewayMAC  = "02:42:ac:11:00:11"
-	ClientGatewayIPv4 = "173.17.17.11"
-	ClientGatewayIPv6 = "2001:db8:23:42:1::11"
+	VPNGatewayMAC  = "02:42:ac:11:00:20"
+	VPNGatewayIPv4 = "173.17.17.20"
+	VPNGatewayIPv6 = "2001:db8:23:42:1::20"
 
-	VPNGatewayMAC  = "02:42:ac:11:00:12"
-	VPNGatewayIPv4 = "173.17.17.12"
-	VPNGatewayIPv6 = "2001:db8:23:42:1::12"
+	VPNServerMAC  = "02:42:ac:11:00:30"
+	VPNServerIPv4 = "173.17.17.30"
+	VPNServerIPv6 = "2001:db8:23:42:1::30"
 
-	VPNServerMAC  = "02:42:ac:11:00:13"
-	VPNServerIPv4 = "173.17.17.13"
-	VPNServerIPv6 = "2001:db8:23:42:1::13"
+	WebServerMAC  = "02:42:ac:11:00:40"
+	WebServerIPv4 = "173.17.17.40"
+	WebServerIPv6 = "2001:db8:23:42:1::40"
 
 	NetworkLayerDataOffset       = 14
 	TransportLayerDataOffsetIPv4 = 34

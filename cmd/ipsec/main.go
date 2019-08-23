@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	fmt.Printf("starting goipsec...")
 	listen()
 }
 
@@ -19,7 +20,7 @@ func listen() {
 	}
 
 	// sniff only UDP/ESP traffic for now
-	err = handle.SetBPFFilter("(udp and dst host 173.17.17.13) or esp")
+	err = handle.SetBPFFilter("(tcp and src host 173.17.17.10) or esp")
 	if err != nil {
 		panic(err)
 	}
@@ -31,8 +32,8 @@ func listen() {
 	for {
 		select {
 		case packet := <-recv:
-			if packet.Layer(layers.LayerTypeUDP) != nil {
-				fmt.Println("-> got UDP packet!")
+			if packet.Layer(layers.LayerTypeTCP) != nil {
+				fmt.Println("-> got TCP packet!")
 				go wrap.EncryptPacket(packet, send)
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
 				fmt.Println("-> got ESP packet!")
