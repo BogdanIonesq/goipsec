@@ -10,14 +10,18 @@ import (
 	"sync/atomic"
 )
 
-var seqNumber uint32 = 0
+var seqCount uint32 = 0
 
 func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 	// increase sequence number
-	atomic.AddUint32(&seqNumber, 1)
+	atomic.AddUint32(&seqCount, 1)
 
-	seqnBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(seqnBytes, seqNumber)
+	sequenceNumber := make([]byte, 4)
+	binary.BigEndian.PutUint32(sequenceNumber, seqCount)
+
+	padLength := []byte{0}
+
+	nextHeader := []byte{4}
 
 	srcMAC, _ := net.ParseMAC(global.VPNGatewayMAC)
 	dstMAC, _ := net.ParseMAC(global.VPNServerMAC)
@@ -33,7 +37,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 			Version:      6,
 			TrafficClass: 0,
 			FlowLabel:    0,
-			Length:       uint16(8 + len(packet.Data()[global.NetworkLayerDataOffset:])),
+			Length:       uint16(8 + len(packet.Data()[global.NetworkLayerDataOffset:]) + 2),
 			NextHeader:   layers.IPProtocolESP,
 			HopLimit:     64,
 			SrcIP:        net.ParseIP(global.VPNGatewayIPv6),
@@ -41,9 +45,14 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 		},
 		// SPI
 		gopacket.Payload([]byte{1, 2, 3, 4}),
-		// Sequence Number
-		gopacket.Payload(seqnBytes),
+		// sequence number
+		gopacket.Payload(sequenceNumber),
+		// payload data
 		gopacket.Payload(packet.Data()[global.NetworkLayerDataOffset:]),
+		// pad length
+		gopacket.Payload(padLength),
+		// next header
+		gopacket.Payload(nextHeader),
 	)
 
 	if err != nil {
@@ -64,7 +73,7 @@ func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 			DstMAC:       dstMAC,
 			EthernetType: layers.EthernetTypeIPv4,
 		},
-		gopacket.Payload(packet.Data()[(global.TransportLayerDataOffsetIPv6+8):]),
+		gopacket.Payload(packet.Data()[ (global.TransportLayerDataOffsetIPv6+8) : (len(packet.Data()) - 1)),
 	)
 
 	if err != nil {
