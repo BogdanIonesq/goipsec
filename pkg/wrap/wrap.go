@@ -63,8 +63,10 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 }
 
 func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
-	srcMAC, _ := net.ParseMAC(global.VPNServerMAC)
+	srcMAC, _ := net.ParseMAC(global.ClientMAC)
 	dstMAC, _ := net.ParseMAC(global.WebServerMAC)
+
+	packetLen := len(packet.Data())
 
 	decryptedPacket := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(decryptedPacket, gopacket.SerializeOptions{},
@@ -73,7 +75,7 @@ func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 			DstMAC:       dstMAC,
 			EthernetType: layers.EthernetTypeIPv4,
 		},
-		gopacket.Payload(packet.Data()[ (global.TransportLayerDataOffsetIPv6+8) : (len(packet.Data()) - 1)),
+		gopacket.Payload(packet.Data()[(global.TransportLayerDataOffsetIPv6+8):(packetLen-2)]),
 	)
 
 	if err != nil {
