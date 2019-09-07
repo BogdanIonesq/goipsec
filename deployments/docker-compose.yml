@@ -13,13 +13,16 @@ services:
       - ALL
     depends_on:
       - vpn-gateway
-    command: sh -c 'ip route delete default && 
-                    ip route add default via 173.17.17.20 && 
-                    ip route delete 173.17.17.0/24 && 
-                    ip route show &&
-                    sleep 3 && 
-                    curl web-server --connect-timeout 5 -v -4'
-    # command: sh -c 'sleep 3 && curl web-server --connect-timeout 5 -v -4'
+    volumes:
+      - /home/bogdan/.go/src/goipsec/deployments/logs/client.pcap:/client.pcap
+    # command: sh -c 'ip route delete default && 
+    #                 ip route add default via 173.17.17.20 && 
+    #                 ip route delete 173.17.17.0/24 && 
+    #                 ip route show &&
+    #                 (tcpdump -w /client.pcap &) &&
+    #                 sleep 3 && 
+    #                 curl web-server --connect-timeout 5 -v -6'
+    command: sh -c 'sleep 3 && curl web-server --connect-timeout 5 -v -6'
     networks: 
       default:
         ipv4_address: "173.17.17.10"
@@ -39,7 +42,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'iptables -I FORWARD -s 173.17.17.10 -j DROP && 
+    command: sh -c 'iptables -I FORWARD -p tcp --dport 80 -s 173.17.17.10 -j DROP && 
                     (/go/src/goipsec/cmd/ipsec/main &) &&
                     tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap'
     networks: 
