@@ -1,5 +1,5 @@
-FROM nginx:1.17-alpine
+FROM nginx:latest
 
-RUN apk update && apk add tcpdump
+RUN apt-get update && apt-get install -y tcpdump iptables
 
 COPY ./config/default.conf /etc/nginx/conf.d/default.conf

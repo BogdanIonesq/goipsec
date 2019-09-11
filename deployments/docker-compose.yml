@@ -9,20 +9,20 @@ services:
     image: goipsec-client
     container_name: client
     mac_address: "02:42:ac:11:00:10"
+    stop_grace_period: 10s1
     cap_add:
       - ALL
     depends_on:
       - vpn-gateway
     volumes:
       - /home/bogdan/.go/src/goipsec/deployments/logs/client.pcap:/client.pcap
-    # command: sh -c 'ip route delete default && 
-    #                 ip route add default via 173.17.17.20 && 
-    #                 ip route delete 173.17.17.0/24 && 
-    #                 ip route show &&
-    #                 (tcpdump -w /client.pcap &) &&
-    #                 sleep 3 && 
-    #                 curl web-server --connect-timeout 5 -v -6'
-    command: sh -c 'sleep 3 && curl web-server --connect-timeout 5 -v -6'
+    # command: bash -c '(tcpdump -w /client.pcap &) &&
+    #                   ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20 && 
+    #                   sleep 5 &&
+    #                   curl web-server --local-port 6666 -s -m 5 -6; sleep 5'
+    command: bash -c '(tcpdump -w /client.pcap &) &&
+                      sleep 5 &&
+                      curl web-server --local-port 6666 -s -m 5 -6; sleep 10'
     networks: 
       default:
         ipv4_address: "173.17.17.10"
@@ -35,16 +35,19 @@ services:
     image: goipsec-vpn
     container_name: vpn-gateway
     mac_address: "02:42:ac:11:00:20"
+    stop_grace_period: 10s
     depends_on:
       vpn-server:
         condition: service_healthy
+    sysctls:
+      - net.ipv6.conf.all.forwarding=0
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'iptables -I FORWARD -p tcp --dport 80 -s 173.17.17.10 -j DROP && 
-                    (/go/src/goipsec/cmd/ipsec/main &) &&
-                    tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap'
+    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap &) &&
+                      ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
+                      /go/src/goipsec/cmd/ipsec/main'
     networks: 
       default:
         ipv4_address: "173.17.17.20"
@@ -57,20 +60,21 @@ services:
     image: goipsec-vpn
     container_name: vpn-server
     mac_address: "02:42:ac:11:00:30"
+    stop_grace_period: 10s
     depends_on:
       - web-server
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: sh -c 'rm -f /go/src/goipsec/cmd/ipsec/main && 
-                    cd /go/src/goipsec/cmd/ipsec/ && 
-                    go build main.go && 
-                    (./main &) &&
-                    tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap'
+    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap &) &&
+                      rm -f /go/src/goipsec/cmd/ipsec/main && 
+                      cd /go/src/goipsec/cmd/ipsec/ && 
+                      go build main.go && 
+                      ./main'
     healthcheck:
       test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
-      interval: 1s
+      interval: 2s
       timeout: 3s
       retries: 3
     networks: 
@@ -85,11 +89,14 @@ services:
     image: goipsec-web-server
     container_name: web-server
     mac_address: "02:42:ac:11:00:40"
+    stop_grace_period: 10s
+    sysctls:
+      - net.netfilter.nf_conntrack_checksum=0
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec/deployments/logs/web-server.pcap:/ipsec/web-server.pcap
-    command: sh -c 'nginx && tcpdump -w /ipsec/web-server.pcap'
+      - /home/bogdan/.go/src/goipsec/deployments/logs/web-server.pcap:/web-server.pcap
+    command: sh -c 'nginx && tcpdump -w /web-server.pcap'
     networks:
       default:
         ipv4_address: "173.17.17.40"

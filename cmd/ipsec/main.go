@@ -9,18 +9,18 @@ import (
 )
 
 func main() {
-	fmt.Printf("starting goipsec...")
+	fmt.Printf("starting goipsec...\n")
 	listen()
 }
 
 func listen() {
-	handle, err := pcap.OpenLive("eth0", 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive("eth0", 1600, false, pcap.BlockForever)
 	if err != nil {
 		panic(err)
 	}
 
 	// sniff only UDP/ESP traffic for now
-	err = handle.SetBPFFilter("(tcp and src host 173.17.17.10) or esp")
+	err = handle.SetBPFFilter("(tcp and src host 2001:db8:23:42:1::10) or esp or (tcp and src host 2001:db8:23:42:1::40)")
 	if err != nil {
 		panic(err)
 	}
@@ -34,6 +34,7 @@ func listen() {
 		case packet := <-recv:
 			if packet.Layer(layers.LayerTypeTCP) != nil {
 				fmt.Println("-> got TCP packet!")
+				fmt.Println(packet.String())
 				go wrap.EncryptPacket(packet, send)
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
 				fmt.Println("-> got ESP packet!")

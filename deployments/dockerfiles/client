@@ -1,5 +1,6 @@
-FROM alpine:latest
+FROM debian:latest
 
-RUN apk update && apk add tcpdump iptables netcat-openbsd curl
+RUN apt-get update \
+    && apt-get install -y tcpdump iptables curl wget
 
 CMD [ "sleep", "2147483647" ]

@@ -20,4 +20,6 @@ const (
 	NetworkLayerDataOffset       = 14
 	TransportLayerDataOffsetIPv4 = 34
 	TransportLayerDataOffsetIPv6 = 54
+
+	ESPHeaderLength = 8
 )

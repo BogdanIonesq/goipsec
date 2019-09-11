@@ -1,6 +1,7 @@
-FROM golang:1.12-alpine
+FROM golang:latest
 
-RUN apk update && apk add tcpdump git iptables netcat-openbsd gcc libc-dev libpcap-dev
+RUN apt-get update \
+    && apt-get install -y git tcpdump iptables libc6-dev libpcap-dev gcc curl
 
 RUN go get github.com/google/gopacket
 
