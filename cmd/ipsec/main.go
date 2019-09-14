@@ -5,7 +5,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"goipsec/pkg/wrap"
+	"goipsec/pkg/ipsec"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 }
 
 func listen() {
-	handle, err := pcap.OpenLive("eth0", 1600, false, pcap.BlockForever)
+	handle, err := pcap.OpenLive("eth0", 1600, true, pcap.BlockForever)
 	if err != nil {
 		panic(err)
 	}
@@ -34,11 +34,10 @@ func listen() {
 		case packet := <-recv:
 			if packet.Layer(layers.LayerTypeTCP) != nil {
 				fmt.Println("-> got TCP packet!")
-				fmt.Println(packet.String())
-				go wrap.EncryptPacket(packet, send)
+				go ipsec.EncryptPacket(packet, send)
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
 				fmt.Println("-> got ESP packet!")
-				go wrap.DecryptPacket(packet, send)
+				go ipsec.DecryptPacket(packet, send)
 			}
 		case packet := <-send:
 			err := handle.WritePacketData(packet.Bytes())

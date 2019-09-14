@@ -9,20 +9,22 @@ services:
     image: goipsec-client
     container_name: client
     mac_address: "02:42:ac:11:00:10"
-    stop_grace_period: 10s1
+    stop_grace_period: 10s
+    sysctls:
+      - net.ipv4.tcp_timestamps=0
     cap_add:
       - ALL
     depends_on:
       - vpn-gateway
     volumes:
       - /home/bogdan/.go/src/goipsec/deployments/logs/client.pcap:/client.pcap
-    # command: bash -c '(tcpdump -w /client.pcap &) &&
-    #                   ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20 && 
-    #                   sleep 5 &&
-    #                   curl web-server --local-port 6666 -s -m 5 -6; sleep 5'
     command: bash -c '(tcpdump -w /client.pcap &) &&
+                      ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20 && 
                       sleep 5 &&
                       curl web-server --local-port 6666 -s -m 5 -6; sleep 10'
+    # command: bash -c '(tcpdump -w /client.pcap &) &&
+    #                   sleep 5 &&
+    #                   curl web-server --local-port 6666 -s -m 5 -6; sleep 10'
     networks: 
       default:
         ipv4_address: "173.17.17.10"

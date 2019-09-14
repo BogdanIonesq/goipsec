@@ -1,4 +1,4 @@
-package wrap
+package ipsec
 
 import (
 	"encoding/binary"
@@ -6,6 +6,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"goipsec/global"
+	"goipsec/pkg/csums"
 	"net"
 	"sync/atomic"
 )
@@ -37,7 +38,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 			Version:      6,
 			TrafficClass: 0,
 			FlowLabel:    0,
-			Length:       uint16(8 + len(packet.Data()[global.NetworkLayerDataOffset:]) + 2),
+			Length:       uint16(8 + len(packet.Data()[global.NetworkLayerStart:]) + 2),
 			NextHeader:   layers.IPProtocolESP,
 			HopLimit:     64,
 			SrcIP:        net.ParseIP(global.VPNGatewayIPv6),
@@ -48,7 +49,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 		// sequence number
 		gopacket.Payload(sequenceNumber),
 		// payload data
-		gopacket.Payload(packet.Data()[global.NetworkLayerDataOffset:]),
+		gopacket.Payload(packet.Data()[global.NetworkLayerStart:]),
 		// pad length
 		gopacket.Payload(padLength),
 		// next header
@@ -69,8 +70,13 @@ func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 	srcIP := net.ParseIP(global.VPNServerIPv6)
 	dstIP := net.ParseIP(global.WebServerIPv6)
 
+	IPLayerStart := global.TransportLayerStartIPv6 + global.ESPHeaderLength
 	packetLen := len(packet.Data())
-	dataOffset := global.TransportLayerDataOffsetIPv6 + global.ESPHeaderLength
+	tcpLayer := packet.Data()[IPLayerStart+40 : packetLen-2]
+
+	csum := csums.TCPcsum(srcIP, dstIP, tcpLayer)
+	tcpLayer[16] = byte(csum >> 8)
+	tcpLayer[17] = byte(csum)
 
 	decryptedPacket := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(decryptedPacket, gopacket.SerializeOptions{},
@@ -79,10 +85,13 @@ func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 			DstMAC:       dstMAC,
 			EthernetType: layers.EthernetTypeIPv6,
 		},
-		gopacket.Payload(packet.Data()[dataOffset:dataOffset+8]),
+		// the original IPv6 header, minus addresses
+		gopacket.Payload(packet.Data()[IPLayerStart:IPLayerStart+8]),
+		// modified addresses
 		gopacket.Payload(srcIP),
 		gopacket.Payload(dstIP),
-		gopacket.Payload(packet.Data()[dataOffset+40:packetLen-2]),
+		// tcp data
+		gopacket.Payload(tcpLayer),
 	)
 
 	if err != nil {

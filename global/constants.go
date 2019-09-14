@@ -17,9 +17,9 @@ const (
 	WebServerIPv4 = "173.17.17.40"
 	WebServerIPv6 = "2001:db8:23:42:1::40"
 
-	NetworkLayerDataOffset       = 14
-	TransportLayerDataOffsetIPv4 = 34
-	TransportLayerDataOffsetIPv6 = 54
+	NetworkLayerStart       = 14
+	TransportLayerStartIPv4 = 34
+	TransportLayerStartIPv6 = 54
 
 	ESPHeaderLength = 8
 )
