@@ -70,6 +70,7 @@ services:
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
     command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap &) &&
+                      ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
                       rm -f /go/src/goipsec/cmd/ipsec/main && 
                       cd /go/src/goipsec/cmd/ipsec/ && 
                       go build main.go && 

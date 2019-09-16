@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"goipsec/global"
 	"goipsec/pkg/ipsec"
+	"net"
 )
 
 func main() {
@@ -19,7 +22,7 @@ func listen() {
 		panic(err)
 	}
 
-	// sniff only UDP/ESP traffic for now
+	// sniff traffic
 	err = handle.SetBPFFilter("(tcp and src host 2001:db8:23:42:1::10) or esp or (tcp and src host 2001:db8:23:42:1::40)")
 	if err != nil {
 		panic(err)
@@ -29,15 +32,31 @@ func listen() {
 	send := make(chan gopacket.SerializeBuffer)
 	recv := gopacket.NewPacketSource(handle, handle.LinkType()).Packets()
 
+	// convert IP addresses now to avoid re-calling same functions
+	clientAddr := net.ParseIP(global.ClientIPv6)
+	VPNGatewayAddr := net.ParseIP(global.VPNGatewayIPv6)
+
 	for {
 		select {
 		case packet := <-recv:
 			if packet.Layer(layers.LayerTypeTCP) != nil {
-				fmt.Println("-> got TCP packet!")
-				go ipsec.EncryptPacket(packet, send)
+				IPLayer := packet.Layer(layers.LayerTypeIPv6)
+				if bytes.Compare(IPLayer.LayerContents()[8:24], clientAddr) == 0 {
+					fmt.Println("-> got TCP packet from client")
+					go ipsec.EncryptPacket(packet, send, true)
+				} else {
+					fmt.Println("-> got TCP packet from server")
+					go ipsec.EncryptPacket(packet, send, false)
+				}
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
-				fmt.Println("-> got ESP packet!")
-				go ipsec.DecryptPacket(packet, send)
+				IPLayer := packet.Layer(layers.LayerTypeIPv6)
+				if bytes.Compare(IPLayer.LayerContents()[8:24], VPNGatewayAddr) == 0 {
+					fmt.Println("-> got ESP packet from VPN gateway")
+					go ipsec.DecryptPacket(packet, send, true)
+				} else {
+					fmt.Println("-> got ESP packet from VPN server")
+					go ipsec.DecryptPacket(packet, send, false)
+				}
 			}
 		case packet := <-send:
 			err := handle.WritePacketData(packet.Bytes())

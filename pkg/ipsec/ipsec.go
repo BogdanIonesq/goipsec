@@ -11,21 +11,36 @@ import (
 	"sync/atomic"
 )
 
-var seqCount uint32 = 0
+var GatewaySeqCount uint32 = 0
+var ServerSeqCount uint32 = 0
 
-func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
-	// increase sequence number
-	atomic.AddUint32(&seqCount, 1)
-
+func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, outgoing bool) {
+	var srcIP, dstIP net.IP
+	var srcMAC, dstMAC net.HardwareAddr
+	// ESP header and trailer components
 	sequenceNumber := make([]byte, 4)
-	binary.BigEndian.PutUint32(sequenceNumber, seqCount)
-
 	padLength := []byte{0}
-
 	nextHeader := []byte{4}
 
-	srcMAC, _ := net.ParseMAC(global.VPNGatewayMAC)
-	dstMAC, _ := net.ParseMAC(global.VPNServerMAC)
+	if outgoing {
+		atomic.AddUint32(&GatewaySeqCount, 1)
+		binary.BigEndian.PutUint32(sequenceNumber, GatewaySeqCount)
+
+		srcIP = net.ParseIP(global.VPNGatewayIPv6)
+		dstIP = net.ParseIP(global.VPNServerIPv6)
+
+		srcMAC, _ = net.ParseMAC(global.VPNGatewayMAC)
+		dstMAC, _ = net.ParseMAC(global.VPNServerMAC)
+	} else {
+		atomic.AddUint32(&ServerSeqCount, 1)
+		binary.BigEndian.PutUint32(sequenceNumber, ServerSeqCount)
+
+		srcIP = net.ParseIP(global.VPNServerIPv6)
+		dstIP = net.ParseIP(global.VPNGatewayIPv6)
+
+		srcMAC, _ = net.ParseMAC(global.VPNServerMAC)
+		dstMAC, _ = net.ParseMAC(global.VPNGatewayMAC)
+	}
 
 	encryptedPacket := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
@@ -41,8 +56,8 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 			Length:       uint16(8 + len(packet.Data()[global.NetworkLayerStart:]) + 2),
 			NextHeader:   layers.IPProtocolESP,
 			HopLimit:     64,
-			SrcIP:        net.ParseIP(global.VPNGatewayIPv6),
-			DstIP:        net.ParseIP(global.VPNServerIPv6),
+			SrcIP:        srcIP,
+			DstIP:        dstIP,
 		},
 		// SPI
 		gopacket.Payload([]byte{1, 2, 3, 4}),
@@ -63,12 +78,23 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 	}
 }
 
-func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
-	srcMAC, _ := net.ParseMAC(global.VPNServerMAC)
-	dstMAC, _ := net.ParseMAC(global.WebServerMAC)
+func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, outgoing bool) {
+	var srcIP, dstIP net.IP
+	var srcMAC, dstMAC net.HardwareAddr
 
-	srcIP := net.ParseIP(global.VPNServerIPv6)
-	dstIP := net.ParseIP(global.WebServerIPv6)
+	if outgoing {
+		srcIP = net.ParseIP(global.VPNServerIPv6)
+		dstIP = net.ParseIP(global.WebServerIPv6)
+
+		srcMAC, _ = net.ParseMAC(global.VPNServerMAC)
+		dstMAC, _ = net.ParseMAC(global.WebServerMAC)
+	} else {
+		srcIP = net.ParseIP(global.WebServerIPv6)
+		dstIP = net.ParseIP(global.ClientIPv6)
+
+		srcMAC, _ = net.ParseMAC(global.VPNGatewayMAC)
+		dstMAC, _ = net.ParseMAC(global.ClientMAC)
+	}
 
 	IPLayerStart := global.TransportLayerStartIPv6 + global.ESPHeaderLength
 	packetLen := len(packet.Data())
