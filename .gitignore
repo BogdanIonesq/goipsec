@@ -1,3 +1,6 @@
 .idea/
-deployments/logs/
 cmd/ipsec/main
+deployments/logs/client.pcap
+deployments/logs/vpn-gateway.pcap
+deployments/logs/vpn-server.pcap
+deployments/logs/web-server.pcap
