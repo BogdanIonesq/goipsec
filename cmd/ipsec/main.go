@@ -17,7 +17,7 @@ func main() {
 }
 
 func listen() {
-	handle, err := pcap.OpenLive("eth0", 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive("eth0", 65536, true, pcap.BlockForever)
 	if err != nil {
 		panic(err)
 	}
