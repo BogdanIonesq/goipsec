@@ -1,10 +1,10 @@
-package csums
+package csum
 
 import (
 	"github.com/google/gopacket/layers"
 )
 
-func TCPcsum(srcaddr, dstaddr, tcpdata []byte) uint16 {
+func TCPIPv6(srcaddr, dstaddr, tcpdata []byte) uint16 {
 	var csum uint32 = 0
 	var tcplen uint32 = uint32(len(tcpdata))
 

@@ -7,7 +7,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"goipsec/global"
-	"goipsec/pkg/csums"
+	"goipsec/pkg/csum"
 	"net"
 )
 
@@ -56,7 +56,7 @@ func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 
 	tcpLayer := originalPayload[ipv6HeaderLength:]
 
-	csum := csums.TCPcsum(srcIP, dstIP, tcpLayer)
+	csum := csum.TCPIPv6(srcIP, dstIP, tcpLayer)
 	tcpLayer[16] = byte(csum >> 8)
 	tcpLayer[17] = byte(csum)
 
