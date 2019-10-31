@@ -9,10 +9,12 @@ import (
 	"goipsec/global"
 	"goipsec/pkg/glog"
 	"goipsec/pkg/ipsec"
+	"goipsec/pkg/preflight"
 	"net"
 )
 
 func main() {
+	preflight.Checklist()
 	glog.Logger.Print("INFO: starting goipsec")
 	listen()
 }
@@ -42,7 +44,7 @@ func listen() {
 		case packet := <-recv:
 			if packet.Layer(layers.LayerTypeTCP) != nil {
 				IPLayer := packet.Layer(layers.LayerTypeIPv6)
-				glog.Logger.Printf("INFO recv TCP packet from %s\n", net.IP(IPLayer.LayerContents()[8:24]).String())
+				glog.Logger.Printf("INFO: recv TCP packet from %s\n", net.IP(IPLayer.LayerContents()[8:24]).String())
 
 				if bytes.Compare(IPLayer.LayerContents()[8:24], clientAddr) == 0 {
 					go ipsec.EncryptPacket(packet, send, true)
@@ -51,7 +53,7 @@ func listen() {
 				}
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
 				IPLayer := packet.Layer(layers.LayerTypeIPv6)
-				glog.Logger.Printf("INFO recv ESP packet from %s\n", net.IP(IPLayer.LayerContents()[8:24]).String())
+				glog.Logger.Printf("INFO: recv ESP packet from %s\n", net.IP(IPLayer.LayerContents()[8:24]).String())
 
 				if bytes.Compare(IPLayer.LayerContents()[8:24], VPNGatewayAddr) == 0 {
 					go ipsec.DecryptPacket(packet, send, true)

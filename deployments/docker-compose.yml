@@ -36,6 +36,8 @@ services:
     container_name: vpn-gateway
     mac_address: "02:42:ac:11:00:20"
     stop_grace_period: 10s
+    environment:
+      - GOIPSEC_PASSWORD=passwordddpasswordddpassworddddd
     depends_on:
       vpn-server:
         condition: service_healthy
@@ -61,6 +63,8 @@ services:
     container_name: vpn-server
     mac_address: "02:42:ac:11:00:30"
     stop_grace_period: 10s
+    environment:
+      - GOIPSEC_PASSWORD=passwordddpasswordddpassworddddd
     depends_on:
       - web-server
     cap_add:
