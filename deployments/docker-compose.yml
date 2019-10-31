@@ -17,13 +17,13 @@ services:
     volumes:
       - /home/bogdan/.go/src/goipsec/deployments/logs/client.pcap:/client.pcap
     command: bash -c '(tcpdump -w /client.pcap &) &&
-                      ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20 && 
-                      sleep 5 &&
-                      curl web-server --local-port 6666 -s -m 5 -6 -w %{time_total}; sleep 20'
+      ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20 &&
+      sleep 5 &&
+      curl web-server --local-port 6666 -s -m 5 -6 -w %{time_total}; sleep 20'
     # command: bash -c '(tcpdump -w /client.pcap &) &&
     #                   sleep 5 &&
     #                   curl web-server --local-port 6666 -s -m 5 -6; sleep 10'
-    networks: 
+    networks:
       default:
         ipv4_address: "173.17.17.10"
         ipv6_address: "2001:db8:23:42:1::10"
@@ -48,9 +48,9 @@ services:
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
     command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap &) &&
-                      ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
-                      /go/src/goipsec/cmd/ipsec/main'
-    networks: 
+      ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
+      /go/src/goipsec/cmd/ipsec/main'
+    networks:
       default:
         ipv4_address: "173.17.17.20"
         ipv6_address: "2001:db8:23:42:1::20"
@@ -72,17 +72,17 @@ services:
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
     command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap &) &&
-                      ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
-                      rm -f /go/src/goipsec/cmd/ipsec/main && 
-                      cd /go/src/goipsec/cmd/ipsec/ && 
-                      go build main.go && 
-                      ./main'
+      ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
+      rm -f /go/src/goipsec/cmd/ipsec/main &&
+      cd /go/src/goipsec/cmd/ipsec/ &&
+      go build main.go &&
+      ./main'
     healthcheck:
       test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/ipsec/main"]
       interval: 2s
       timeout: 3s
       retries: 3
-    networks: 
+    networks:
       default:
         ipv4_address: "173.17.17.30"
         ipv6_address: "2001:db8:23:42:1::30"
