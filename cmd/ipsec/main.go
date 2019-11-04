@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -64,7 +63,7 @@ func listen() {
 		case packet := <-send:
 			err := handle.WritePacketData(packet.Bytes())
 			if err != nil {
-				fmt.Println("Send packet error: ", err)
+				glog.Logger.Printf("WARNING: send packet error: %s\n", err)
 			}
 		}
 	}
