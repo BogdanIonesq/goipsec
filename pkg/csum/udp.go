@@ -69,7 +69,7 @@ func UDPIPv6(srcaddr, dstaddr, udpdata []byte) uint16 {
 		csum += uint32(udpdata[i+1])
 	}
 
-	if len(tcpdata)%2 == 1 {
+	if len(udpdata)%2 == 1 {
 		csum += uint32(udpdata[end]) << 8
 	}
 
