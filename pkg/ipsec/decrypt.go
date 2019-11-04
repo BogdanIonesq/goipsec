@@ -8,7 +8,9 @@ import (
 	"github.com/google/gopacket/layers"
 	"goipsec/global"
 	"goipsec/pkg/csum"
+	"goipsec/pkg/glog"
 	"net"
+	"os"
 )
 
 const (
@@ -19,16 +21,18 @@ const (
 func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, outgoing bool) {
 	var srcIP, dstIP net.IP
 	var srcMAC, dstMAC net.HardwareAddr
-	aeskey := []byte("passwordddpasswordddpassworddddd")
+	cryptokey := []byte(os.Getenv("GOIPSEC_PASSWORD"))
 
+	// separate the IV and ciphertext portions
 	iv := packet.Data()[espPayloadOffset : espPayloadOffset+aes.BlockSize]
 	ciphertext := packet.Data()[espPayloadOffset+aes.BlockSize:]
 
 	if len(ciphertext)%aes.BlockSize != 0 {
-		panic("ciphertext is not a multiple of the block size")
+		glog.Logger.Print("WARNING: ciphertext is not a multiple of block size")
+		return
 	}
 
-	block, err := aes.NewCipher(aeskey)
+	block, err := aes.NewCipher(cryptokey)
 	if err != nil {
 		panic(err)
 	}

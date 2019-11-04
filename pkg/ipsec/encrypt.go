@@ -5,12 +5,13 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"goipsec/global"
+	"goipsec/pkg/glog"
 	"io"
 	"net"
+	"os"
 	"sync/atomic"
 )
 
@@ -26,12 +27,18 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	var srcMAC, dstMAC net.HardwareAddr
 	var padLength, nextHeader int
 	sequenceNumber := make([]byte, 4)
-	aeskey := []byte("passwordddpasswordddpassworddddd")
-	nextHeader = 4
+	cryptokey := []byte(os.Getenv("GOIPSEC_PASSWORD"))
 
+	nextHeader = 4
+	if packet.NetworkLayer().LayerType() == layers.LayerTypeIPv6 {
+		nextHeader = 41
+	}
+
+	// original packet minus the link layer
 	originalPayload := packet.Data()[networkLayerOffset:]
 	originalPayloadLen := len(originalPayload)
 
+	// length must be a multiple of aes.BlockSize
 	if (originalPayloadLen+2)%aes.BlockSize != 0 {
 		padLength = 1
 		for ((originalPayloadLen + 2 + padLength) % aes.BlockSize) != 0 {
@@ -43,16 +50,18 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 
 	originalPayload = append(originalPayload, byte(padLength), byte(nextHeader))
 
-	block, err := aes.NewCipher(aeskey)
+	block, err := aes.NewCipher(cryptokey)
 	if err != nil {
 		panic(err)
 	}
 
+	// generate a random IV
 	iv := make([]byte, aes.BlockSize)
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 		panic(err)
 	}
 
+	// add the IV to the start of the ciphertext
 	ciphertext := append(iv, originalPayload...)
 	mode := cipher.NewCBCEncrypter(block, iv)
 	mode.CryptBlocks(ciphertext[aes.BlockSize:], originalPayload)
@@ -100,7 +109,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	)
 
 	if err != nil {
-		fmt.Println("Packet creation error: ", err)
+		glog.Logger.Printf("WARNING: packet creation error: %s\n", err)
 	} else {
 		send <- encryptedPacket
 	}
