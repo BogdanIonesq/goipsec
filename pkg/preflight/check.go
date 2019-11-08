@@ -13,4 +13,13 @@ func Checklist() {
 	} else {
 		glog.Logger.Print("INFO: env variable GOIPSEC_PASSWORD found")
 	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		glog.Logger.Fatalf("ERROR: config directory not found: %s\n", err)
+	}
+
+	if _, err := os.Open(configDir + "/goipsec.conf"); err != nil {
+		glog.Logger.Fatalf("ERROR: config file not found: %s\n", err)
+	}
 }

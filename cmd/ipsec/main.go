@@ -42,13 +42,20 @@ func listen() {
 		select {
 		case packet := <-recv:
 			if packet.Layer(layers.LayerTypeTCP) != nil {
-				IPLayer := packet.Layer(layers.LayerTypeIPv6)
-				glog.Logger.Printf("INFO: recv TCP packet from %s\n", net.IP(IPLayer.LayerContents()[8:24]).String())
-
-				if bytes.Compare(IPLayer.LayerContents()[8:24], clientAddr) == 0 {
-					go ipsec.EncryptPacket(packet, send, true)
+				networkLayer := packet.Layer(layers.LayerTypeIPv6)
+				if networkLayer == nil {
+					// IPv4 packet
+					networkLayer = packet.Layer(layers.LayerTypeIPv4)
+					glog.Logger.Printf("INFO: recv IPv4 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[12:16]).String())
 				} else {
-					go ipsec.EncryptPacket(packet, send, false)
+					// IPv6 packet
+					glog.Logger.Printf("INFO: recv IPv6 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[8:24]).String())
+
+					if bytes.Compare(networkLayer.LayerContents()[8:24], clientAddr) == 0 {
+						go ipsec.EncryptPacket(packet, send, true)
+					} else {
+						go ipsec.EncryptPacket(packet, send, false)
+					}
 				}
 			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
 				IPLayer := packet.Layer(layers.LayerTypeIPv6)
