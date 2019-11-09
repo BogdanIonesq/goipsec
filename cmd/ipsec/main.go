@@ -6,6 +6,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"goipsec/global"
+	"goipsec/pkg/config"
 	"goipsec/pkg/glog"
 	"goipsec/pkg/ipsec"
 	"goipsec/pkg/preflight"
@@ -14,6 +15,7 @@ import (
 
 func main() {
 	preflight.Checklist()
+	config.NewConfig()
 	glog.Logger.Print("INFO: starting goipsec")
 	listen()
 }

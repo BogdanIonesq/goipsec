@@ -6,12 +6,13 @@ import (
 )
 
 func Checklist() {
-	glog.Logger.Print("INFO: starting checklist")
+	glog.Logger.Print("INFO: starting preflight checklist")
 
-	if len(os.Getenv("GOIPSEC_PASSWORD")) != 32 {
-		glog.Logger.Fatal("ERROR: env variable GOIPSEC_PASSWORD not found")
+	if len(os.Getenv("GOIPSEC_KEY")) != 32 {
+		glog.Logger.Println(os.Getenv("GOIPSEC_KEY"))
+		glog.Logger.Fatal("ERROR: env variable GOIPSEC_KEY not found")
 	} else {
-		glog.Logger.Print("INFO: env variable GOIPSEC_PASSWORD found")
+		glog.Logger.Print("INFO: env variable GOIPSEC_KEY OK")
 	}
 
 	configDir, err := os.UserConfigDir()
@@ -19,7 +20,9 @@ func Checklist() {
 		glog.Logger.Fatalf("ERROR: config directory not found: %s\n", err)
 	}
 
-	if _, err := os.Open(configDir + "/goipsec.conf"); err != nil {
+	if _, err := os.Open(configDir + "/goipsec.json"); err != nil {
 		glog.Logger.Fatalf("ERROR: config file not found: %s\n", err)
 	}
+
+	glog.Logger.Print("INFO: preflight checklist OK")
 }

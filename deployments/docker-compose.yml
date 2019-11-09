@@ -37,7 +37,7 @@ services:
     mac_address: "02:42:ac:11:00:20"
     stop_grace_period: 10s
     environment:
-      - GOIPSEC_PASSWORD=passwordddpasswordddpassworddddd
+      - GOIPSEC_KEY=passwordddpasswordddpassworddddd
     depends_on:
       vpn-server:
         condition: service_healthy
@@ -64,7 +64,7 @@ services:
     mac_address: "02:42:ac:11:00:30"
     stop_grace_period: 10s
     environment:
-      - GOIPSEC_PASSWORD=passwordddpasswordddpassworddddd
+      - GOIPSEC_KEY=passwordddpasswordddpassworddddd
     depends_on:
       - web-server
     cap_add:
