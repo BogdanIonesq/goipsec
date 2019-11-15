@@ -17,6 +17,8 @@ type config struct {
 	NodeMAC         string
 	NextHopMAC      string
 	GatewayIPv6Addr string
+	SrcUDPPort      int
+	DstUDPPort      int
 }
 
 var Config config
@@ -55,6 +57,10 @@ func NewConfig() {
 
 	if _, err := net.ParseMAC(Config.NextHopMAC); err != nil {
 		glog.Logger.Fatalln("ERROR: value error in config file")
+	}
+
+	if Config.SrcUDPPort == 0 || Config.DstUDPPort == 0 {
+		glog.Logger.Fatalln("ERROR: UDP port(s) error in config file")
 	}
 
 	glog.Logger.Print("INFO: config file OK")

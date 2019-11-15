@@ -8,6 +8,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"goipsec/global"
+	"goipsec/pkg/config"
 	"goipsec/pkg/glog"
 	"io"
 	"net"
@@ -29,12 +30,13 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	sequenceNumber := make([]byte, 4)
 	cryptokey := []byte(os.Getenv("GOIPSEC_PASSWORD"))
 
-	nextHeader = 4
+	// ESP Next Header field
+	nextHeader = int(layers.IPProtocolIPv4)
 	if packet.NetworkLayer().LayerType() == layers.LayerTypeIPv6 {
-		nextHeader = 41
+		nextHeader = int(layers.IPProtocolIPv6)
 	}
 
-	// original packet minus the link layer
+	// original packet starting from network layer
 	originalPayload := packet.Data()[networkLayerOffset:]
 	originalPayloadLen := len(originalPayload)
 
@@ -87,7 +89,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	}
 
 	encryptedPacket := gopacket.NewSerializeBuffer()
-	err = gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
+	err = gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{ComputeChecksums: true},
 		&layers.Ethernet{
 			SrcMAC:       srcMAC,
 			DstMAC:       dstMAC,
@@ -97,11 +99,18 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 			Version:      6,
 			TrafficClass: 0,
 			FlowLabel:    0,
-			Length:       uint16(8 + len(ciphertext)),
-			NextHeader:   layers.IPProtocolESP,
+			Length:       uint16(16 + len(ciphertext)),
+			NextHeader:   layers.IPProtocolUDP,
 			HopLimit:     64,
 			SrcIP:        srcIP,
 			DstIP:        dstIP,
+		},
+		&layers.UDP{
+			SrcPort: layers.UDPPort(config.Config.SrcUDPPort),
+			DstPort: layers.UDPPort(config.Config.DstUDPPort),
+			// UDP header (8) + SPI(4) + Sequence Number (4) + len of ciphertext
+			Length:   uint16(16 + len(ciphertext)),
+			Checksum: 0,
 		},
 		gopacket.Payload([]byte{1, 2, 3, 4}),
 		gopacket.Payload(sequenceNumber),
