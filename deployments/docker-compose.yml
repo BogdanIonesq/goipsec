@@ -31,13 +31,14 @@ services:
   vpn-gateway:
     build:
       context: ./dockerfiles
-      dockerfile: vpn
-    image: goipsec-vpn
-    container_name: vpn-gateway
+      dockerfile: dockerfiles/client-vpn
+    image: goipsec-client-vpn
+    container_name: client-gateway
     mac_address: "02:42:ac:11:00:20"
     stop_grace_period: 10s
     environment:
       - GOIPSEC_KEY=passwordddpasswordddpassworddddd
+      - XDG_CONFIG_HOME=/root/.config
     depends_on:
       vpn-server:
         condition: service_healthy
@@ -47,7 +48,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap &) &&
+    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/client-vpn-gateway.pcap &) &&
       ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
       /go/src/goipsec/cmd/ipsec/main'
     networks:
@@ -58,20 +59,21 @@ services:
   vpn-server:
     build:
       context: ./dockerfiles
-      dockerfile: vpn
-    image: goipsec-vpn
+      dockerfile: dockerfiles/server-vpn
+    image: goipsec-server-vpn
     container_name: vpn-server
     mac_address: "02:42:ac:11:00:30"
     stop_grace_period: 10s
     environment:
       - GOIPSEC_KEY=passwordddpasswordddpassworddddd
+      - XDG_CONFIG_HOME=/root/.config
     depends_on:
       - web-server
     cap_add:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap &) &&
+    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/client-vpn-server.pcap &) &&
       ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
       rm -f /go/src/goipsec/cmd/ipsec/main &&
       cd /go/src/goipsec/cmd/ipsec/ &&

@@ -4,6 +4,8 @@ RUN apt-get update \
     && apt-get install -y git tcpdump iptables libc6-dev libpcap-dev gcc curl
 
 RUN go get github.com/google/gopacket
+RUN mkdir /root/.config
+COPY ./config/server_cfg.json /root/.config/goipsec.json
 
 WORKDIR /ipsec
 

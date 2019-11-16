@@ -27,6 +27,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	var srcIP, dstIP net.IP
 	var srcMAC, dstMAC net.HardwareAddr
 	var padLength, nextHeader int
+	var espLayer []byte
 	sequenceNumber := make([]byte, 4)
 	cryptokey := []byte(os.Getenv("GOIPSEC_PASSWORD"))
 
@@ -88,6 +89,10 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 		dstMAC, _ = net.ParseMAC(global.VPNGatewayMAC)
 	}
 
+	espLayer = append(espLayer, []byte{1, 2, 3, 4}...)
+	espLayer = append(espLayer, sequenceNumber...)
+	espLayer = append(espLayer, ciphertext...)
+
 	encryptedPacket := gopacket.NewSerializeBuffer()
 	err = gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{ComputeChecksums: true},
 		&layers.Ethernet{
@@ -112,9 +117,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 			Length:   uint16(16 + len(ciphertext)),
 			Checksum: 0,
 		},
-		gopacket.Payload([]byte{1, 2, 3, 4}),
-		gopacket.Payload(sequenceNumber),
-		gopacket.Payload(ciphertext),
+		gopacket.Payload(espLayer),
 	)
 
 	if err != nil {
