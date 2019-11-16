@@ -31,7 +31,7 @@ services:
   vpn-gateway:
     build:
       context: ./dockerfiles
-      dockerfile: dockerfiles/client-vpn
+      dockerfile: client-vpn
     image: goipsec-client-vpn
     container_name: client-gateway
     mac_address: "02:42:ac:11:00:20"
@@ -48,7 +48,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/client-vpn-gateway.pcap &) &&
+    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap &) &&
       ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
       /go/src/goipsec/cmd/ipsec/main'
     networks:
@@ -59,7 +59,7 @@ services:
   vpn-server:
     build:
       context: ./dockerfiles
-      dockerfile: dockerfiles/server-vpn
+      dockerfile: server-vpn
     image: goipsec-server-vpn
     container_name: vpn-server
     mac_address: "02:42:ac:11:00:30"
@@ -73,7 +73,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/client-vpn-server.pcap &) &&
+    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap &) &&
       ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
       rm -f /go/src/goipsec/cmd/ipsec/main &&
       cd /go/src/goipsec/cmd/ipsec/ &&

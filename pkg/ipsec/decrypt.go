@@ -21,7 +21,7 @@ const (
 func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, outgoing bool) {
 	var srcIP, dstIP net.IP
 	var srcMAC, dstMAC net.HardwareAddr
-	cryptokey := []byte(os.Getenv("GOIPSEC_PASSWORD"))
+	cryptokey := []byte(os.Getenv("GOIPSEC_KEY"))
 
 	// separate the IV and ciphertext portions
 	iv := packet.Data()[espPayloadOffset : espPayloadOffset+aes.BlockSize]

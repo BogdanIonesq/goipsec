@@ -29,7 +29,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	var padLength, nextHeader int
 	var espLayer []byte
 	sequenceNumber := make([]byte, 4)
-	cryptokey := []byte(os.Getenv("GOIPSEC_PASSWORD"))
+	cryptokey := []byte(os.Getenv("GOIPSEC_KEY"))
 
 	// ESP Next Header field
 	nextHeader = int(layers.IPProtocolIPv4)
@@ -94,7 +94,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	espLayer = append(espLayer, ciphertext...)
 
 	encryptedPacket := gopacket.NewSerializeBuffer()
-	err = gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{ComputeChecksums: true},
+	err = gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
 		&layers.Ethernet{
 			SrcMAC:       srcMAC,
 			DstMAC:       dstMAC,
