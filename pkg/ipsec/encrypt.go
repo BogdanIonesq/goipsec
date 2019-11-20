@@ -9,6 +9,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"goipsec/global"
 	"goipsec/pkg/config"
+	"goipsec/pkg/csum"
 	"goipsec/pkg/glog"
 	"io"
 	"net"
@@ -114,11 +115,17 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 			SrcPort: layers.UDPPort(config.Config.SrcUDPPort),
 			DstPort: layers.UDPPort(config.Config.DstUDPPort),
 			// UDP header (8) + SPI(4) + Sequence Number (4) + len of ciphertext
-			Length:   uint16(16 + len(ciphertext)),
+			Length: uint16(16 + len(ciphertext)),
+			// checksum is later overwritten
 			Checksum: 0,
 		},
 		gopacket.Payload(espLayer),
 	)
+
+	// calculate checksum and modify the according bytes
+	udpcsum := csum.UDPIPv6(srcIP, dstIP, encryptedPacket.Bytes()[54:])
+	encryptedPacket.Bytes()[60] = byte(udpcsum >> 8)
+	encryptedPacket.Bytes()[61] = byte(udpcsum)
 
 	if err != nil {
 		glog.Logger.Printf("WARNING: packet creation error: %s\n", err)

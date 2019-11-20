@@ -50,6 +50,7 @@ services:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
     command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-gateway.pcap &) &&
       ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
+      ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP && 
       /go/src/goipsec/cmd/ipsec/main'
     networks:
       default:
@@ -75,6 +76,7 @@ services:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
     command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/vpn-server.pcap &) &&
       ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
+      ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP &&
       rm -f /go/src/goipsec/cmd/ipsec/main &&
       cd /go/src/goipsec/cmd/ipsec/ &&
       go build main.go &&
