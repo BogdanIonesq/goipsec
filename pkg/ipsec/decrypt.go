@@ -18,7 +18,7 @@ const (
 	ipv6HeaderLength = 40
 )
 
-func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, outgoing bool) {
+func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 	var srcIP, dstIP net.IP
 	var srcMAC, dstMAC net.HardwareAddr
 	cryptokey := []byte(os.Getenv("GOIPSEC_KEY"))

@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"goipsec/global"
 	"goipsec/pkg/config"
 	"goipsec/pkg/csum"
 	"goipsec/pkg/glog"
@@ -21,39 +20,32 @@ const (
 	networkLayerOffset = 14
 )
 
-var GatewaySeqCount uint32 = 0
-var ServerSeqCount uint32 = 0
+var count uint32
 
-func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, outgoing bool) {
-	var srcIP, dstIP net.IP
-	var srcMAC, dstMAC net.HardwareAddr
-	var padLength, nextHeader int
-	var espLayer []byte
-	sequenceNumber := make([]byte, 4)
-	cryptokey := []byte(os.Getenv("GOIPSEC_KEY"))
-
+func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 	// ESP Next Header field
-	nextHeader = int(layers.IPProtocolIPv4)
+	nextHeader := int(layers.IPProtocolIPv4)
 	if packet.NetworkLayer().LayerType() == layers.LayerTypeIPv6 {
 		nextHeader = int(layers.IPProtocolIPv6)
 	}
 
 	// original packet starting from network layer
-	originalPayload := packet.Data()[networkLayerOffset:]
-	originalPayloadLen := len(originalPayload)
+	espPayload := packet.Data()[networkLayerOffset:]
+	espPayloadLen := len(espPayload)
 
 	// length must be a multiple of aes.BlockSize
-	if (originalPayloadLen+2)%aes.BlockSize != 0 {
+	padLength := 0
+	if (espPayloadLen+2)%aes.BlockSize != 0 {
 		padLength = 1
-		for ((originalPayloadLen + 2 + padLength) % aes.BlockSize) != 0 {
+		for ((espPayloadLen + 2 + padLength) % aes.BlockSize) != 0 {
 			padLength++
 		}
 		padding := make([]byte, padLength)
-		originalPayload = append(originalPayload, padding...)
+		espPayload = append(espPayload, padding...)
 	}
+	espPayload = append(espPayload, byte(padLength), byte(nextHeader))
 
-	originalPayload = append(originalPayload, byte(padLength), byte(nextHeader))
-
+	cryptokey := []byte(os.Getenv("GOIPSEC_KEY"))
 	block, err := aes.NewCipher(cryptokey)
 	if err != nil {
 		panic(err)
@@ -66,33 +58,25 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	}
 
 	// add the IV to the start of the ciphertext
-	ciphertext := append(iv, originalPayload...)
+	ciphertext := append(iv, espPayload...)
 	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(ciphertext[aes.BlockSize:], originalPayload)
+	mode.CryptBlocks(ciphertext[aes.BlockSize:], espPayload)
 
-	if outgoing {
-		atomic.AddUint32(&GatewaySeqCount, 1)
-		binary.BigEndian.PutUint32(sequenceNumber, GatewaySeqCount)
+	// increase sequence count
+	sequenceNumber := make([]byte, 4)
+	atomic.AddUint32(&count, 1)
+	binary.BigEndian.PutUint32(sequenceNumber, count)
 
-		srcIP = net.ParseIP(global.VPNGatewayIPv6)
-		dstIP = net.ParseIP(global.VPNServerIPv6)
-
-		srcMAC, _ = net.ParseMAC(global.VPNGatewayMAC)
-		dstMAC, _ = net.ParseMAC(global.VPNServerMAC)
-	} else {
-		atomic.AddUint32(&ServerSeqCount, 1)
-		binary.BigEndian.PutUint32(sequenceNumber, ServerSeqCount)
-
-		srcIP = net.ParseIP(global.VPNServerIPv6)
-		dstIP = net.ParseIP(global.VPNGatewayIPv6)
-
-		srcMAC, _ = net.ParseMAC(global.VPNServerMAC)
-		dstMAC, _ = net.ParseMAC(global.VPNGatewayMAC)
-	}
-
+	// prepend the esp header
+	var espLayer []byte
 	espLayer = append(espLayer, []byte{1, 2, 3, 4}...)
 	espLayer = append(espLayer, sequenceNumber...)
 	espLayer = append(espLayer, ciphertext...)
+
+	srcMAC, _ := net.ParseMAC(config.Config.NodeMAC)
+	dstMAC, _ := net.ParseMAC(config.Config.NextHopMAC)
+	srcIP := net.ParseIP(config.Config.NodeIPv6Addr)
+	dstIP := net.ParseIP(config.Config.GatewayIPv6Addr)
 
 	encryptedPacket := gopacket.NewSerializeBuffer()
 	err = gopacket.SerializeLayers(encryptedPacket, gopacket.SerializeOptions{},
@@ -105,7 +89,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 			Version:      6,
 			TrafficClass: 0,
 			FlowLabel:    0,
-			Length:       uint16(16 + len(ciphertext)),
+			Length:       uint16(8 + len(espLayer)),
 			NextHeader:   layers.IPProtocolUDP,
 			HopLimit:     64,
 			SrcIP:        srcIP,
@@ -114,8 +98,7 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 		&layers.UDP{
 			SrcPort: layers.UDPPort(config.Config.SrcUDPPort),
 			DstPort: layers.UDPPort(config.Config.DstUDPPort),
-			// UDP header (8) + SPI(4) + Sequence Number (4) + len of ciphertext
-			Length: uint16(16 + len(ciphertext)),
+			Length:  uint16(8 + len(espLayer)),
 			// checksum is later overwritten
 			Checksum: 0,
 		},
@@ -123,9 +106,9 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer, o
 	)
 
 	// calculate checksum and modify the according bytes
-	udpcsum := csum.UDPIPv6(srcIP, dstIP, encryptedPacket.Bytes()[54:])
-	encryptedPacket.Bytes()[60] = byte(udpcsum >> 8)
-	encryptedPacket.Bytes()[61] = byte(udpcsum)
+	cs := csum.UDPIPv6(srcIP, dstIP, encryptedPacket.Bytes()[54:])
+	encryptedPacket.Bytes()[60] = byte(cs >> 8)
+	encryptedPacket.Bytes()[61] = byte(cs)
 
 	if err != nil {
 		glog.Logger.Printf("WARNING: packet creation error: %s\n", err)

@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"goipsec/global"
 	"goipsec/pkg/config"
 	"goipsec/pkg/glog"
 	"goipsec/pkg/ipsec"
@@ -27,7 +25,8 @@ func listen() {
 	}
 
 	// sniff traffic
-	err = handle.SetBPFFilter("(tcp and src host 2001:db8:23:42:1::10) or esp or (tcp and src host 2001:db8:23:42:1::40)")
+	err = handle.SetBPFFilter("(tcp and src host 2001:db8:23:42:1::10 or 2001:db8:23:42:1::40) or " +
+		"(udp and src host 2001:db8:23:42:1::20 or 2001:db8:23:42:1::30)")
 	if err != nil {
 		panic(err)
 	}
@@ -35,10 +34,6 @@ func listen() {
 	// channels
 	send := make(chan gopacket.SerializeBuffer)
 	recv := gopacket.NewPacketSource(handle, handle.LinkType()).Packets()
-
-	// convert IP addresses now to avoid re-calling same functions
-	clientAddr := net.ParseIP(global.ClientIPv6)
-	VPNGatewayAddr := net.ParseIP(global.VPNGatewayIPv6)
 
 	for {
 		select {
@@ -49,25 +44,19 @@ func listen() {
 					// IPv4 packet
 					networkLayer = packet.Layer(layers.LayerTypeIPv4)
 					glog.Logger.Printf("INFO: recv IPv4 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[12:16]).String())
+
+					go ipsec.EncryptPacket(packet, send)
 				} else {
 					// IPv6 packet
 					glog.Logger.Printf("INFO: recv IPv6 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[8:24]).String())
 
-					if bytes.Compare(networkLayer.LayerContents()[8:24], clientAddr) == 0 {
-						go ipsec.EncryptPacket(packet, send, true)
-					} else {
-						go ipsec.EncryptPacket(packet, send, false)
-					}
+					go ipsec.EncryptPacket(packet, send)
 				}
-			} else if packet.Layer(layers.LayerTypeIPSecESP) != nil {
-				IPLayer := packet.Layer(layers.LayerTypeIPv6)
-				glog.Logger.Printf("INFO: recv ESP packet from %s\n", net.IP(IPLayer.LayerContents()[8:24]).String())
+			} else if packet.Layer(layers.LayerTypeUDP) != nil {
+				networkLayer := packet.Layer(layers.LayerTypeIPv6)
+				glog.Logger.Printf("INFO: recv IPv6 UDP packet from %s\n", net.IP(networkLayer.LayerContents()[8:24]).String())
 
-				if bytes.Compare(IPLayer.LayerContents()[8:24], VPNGatewayAddr) == 0 {
-					go ipsec.DecryptPacket(packet, send, true)
-				} else {
-					go ipsec.DecryptPacket(packet, send, false)
-				}
+				go ipsec.DecryptPacket(packet, send)
 			}
 		case packet := <-send:
 			err := handle.WritePacketData(packet.Bytes())
