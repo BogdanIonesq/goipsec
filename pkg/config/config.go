@@ -13,6 +13,7 @@ type config struct {
 	ClientIPv4Addr  string
 	ClientIPv6Addr  string
 	ClientMAC       string
+	NodeIPv4Addr    string
 	NodeIPv6Addr    string
 	NodeMAC         string
 	NextHopMAC      string
@@ -47,7 +48,7 @@ func NewConfig() {
 		}
 	}
 
-	if net.ParseIP(Config.NodeIPv6Addr) == nil || net.ParseIP(Config.GatewayIPv6Addr) == nil {
+	if net.ParseIP(Config.NodeIPv6Addr) == nil || net.ParseIP(Config.NodeIPv4Addr) == nil || net.ParseIP(Config.GatewayIPv6Addr) == nil {
 		glog.Logger.Fatalln("ERROR: value error in config file")
 	}
 

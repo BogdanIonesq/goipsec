@@ -3,9 +3,10 @@
 	"ClientIPv4Addr": "173.17.17.10",
 	"ClientIPv6Addr": "2001:db8:23:42:1::10",
 	"ClientMAC": "02:42:ac:11:00:10",
+	"NodeIPv4Addr": "173.17.17.20",
 	"NodeIPv6Addr": "2001:db8:23:42:1::20",
 	"NodeMAC": "02:42:ac:11:00:20",
-	"NextHopMAC": "02:42:ac:11:00:30",
+	"NextHopMAC": "02:42:ac:11:00:99",
 	"GatewayIPv6Addr": "2001:db8:23:42:1::30",
 	"SrcUDPPort": 6500,
 	"DstUDPPort" : 6500

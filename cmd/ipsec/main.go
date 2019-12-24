@@ -43,12 +43,12 @@ func listen() {
 				if networkLayer == nil {
 					// IPv4 packet
 					networkLayer = packet.Layer(layers.LayerTypeIPv4)
-					glog.Logger.Printf("INFO: recv IPv4 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[12:16]).String())
+					glog.Logger.Printf("INFO: encrypting IPv4 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[12:16]).String())
 
 					go ipsec.EncryptPacket(packet, send)
 				} else {
 					// IPv6 packet
-					glog.Logger.Printf("INFO: recv IPv6 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[8:24]).String())
+					glog.Logger.Printf("INFO: encrypting IPv6 TCP packet from %s\n", net.IP(networkLayer.LayerContents()[8:24]).String())
 
 					go ipsec.EncryptPacket(packet, send)
 				}
