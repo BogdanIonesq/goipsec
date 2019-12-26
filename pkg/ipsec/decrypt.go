@@ -16,6 +16,7 @@ import (
 const (
 	udpPayloadOffset = 62
 	ipv6HeaderLength = 40
+	ipv4HeaderLength = 20
 )
 
 func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
@@ -35,14 +36,11 @@ func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 		panic(err)
 	}
 
+	// decrypt data
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(ciphertext, ciphertext)
 
-	nextHeader := int(ciphertext[len(ciphertext)-1])
-	padLength := int(ciphertext[len(ciphertext)-2])
-
 	var srcMAC, dstMAC net.HardwareAddr
-	var srcIP, dstIP net.IP
 	if config.Config.IsClientGateway {
 		srcMAC, _ = net.ParseMAC(config.Config.NodeMAC)
 		dstMAC, _ = net.ParseMAC(config.Config.ClientMAC)
@@ -51,87 +49,97 @@ func DecryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 		dstMAC, _ = net.ParseMAC(config.Config.NextHopMAC)
 	}
 
-	// original packet before encryption, starting with the network layer
-	var originalPacket gopacket.Packet
-	if nextHeader == int(layers.IPProtocolIPv4) {
-		originalPacket = gopacket.NewPacket(ciphertext[:len(ciphertext)-2-padLength], layers.LayerTypeIPv4, gopacket.Default)
+	nextHeader := int(ciphertext[len(ciphertext)-1])
+	padLength := int(ciphertext[len(ciphertext)-2])
 
+	// original packet before encryption, starting with the network layer
+	originalPacket := ciphertext[:len(ciphertext)-2-padLength]
+
+	// spoofed IPs, transport protocol number, checksum and final packet to be forwarded
+	var srcIP, dstIP net.IP
+	var transportProto int
+	var cs uint16
+	forgedPacket := gopacket.NewSerializeBuffer()
+
+	if nextHeader == int(layers.IPProtocolIPv4) {
 		if config.Config.IsClientGateway {
-			srcIP = originalPacket.Data()[12:16]
+			srcIP = originalPacket[12:16]
 			dstIP = net.ParseIP(config.Config.ClientIPv4Addr)
 		} else {
 			srcIP = net.ParseIP(config.Config.NodeIPv4Addr)
-			dstIP = originalPacket.Data()[16:20]
+			dstIP = originalPacket[16:20]
 		}
-	} else {
-		originalPacket = gopacket.NewPacket(ciphertext[:len(ciphertext)-2-padLength], layers.LayerTypeIPv6, gopacket.Default)
 
-		if config.Config.IsClientGateway {
-			srcIP = originalPacket.Data()[8:24]
-			dstIP = net.ParseIP(config.Config.ClientIPv6Addr)
-		} else {
-			srcIP = net.ParseIP(config.Config.NodeIPv6Addr)
-			dstIP = originalPacket.Data()[24:40]
+		transportProto = int(originalPacket[9])
+		if transportProto == 6 {
+			cs = csum.TCPIPv4(srcIP, dstIP, originalPacket[ipv4HeaderLength:])
+
+			originalPacket[ipv4HeaderLength+16] = byte(cs >> 8)
+			originalPacket[ipv4HeaderLength+17] = byte(cs)
+		} else if transportProto == 17 {
+			cs = csum.UDPIPv4(srcIP, dstIP, originalPacket[ipv4HeaderLength:])
+
+			originalPacket[ipv4HeaderLength+6] = byte(cs >> 8)
+			originalPacket[ipv4HeaderLength+7] = byte(cs)
 		}
-	}
 
-	var cs uint16
-	transportLayer := originalPacket.TransportLayer()
-	if transportLayer.LayerType() == layers.LayerTypeTCP {
-		if nextHeader == int(layers.IPProtocolIPv4) {
-			cs = csum.TCPIPv4(srcIP, dstIP, transportLayer.LayerContents())
-		} else {
-			cs = csum.TCPIPv6(srcIP, dstIP, transportLayer.LayerContents())
-		}
-	} else if transportLayer.LayerType() == layers.LayerTypeUDP {
-		if nextHeader == int(layers.IPProtocolIPv4) {
-			cs = csum.UDPIPv4(srcIP, dstIP, transportLayer.LayerContents())
-		} else {
-			cs = csum.UDPIPv6(srcIP, dstIP, transportLayer.LayerContents())
-		}
-	}
-
-	transportLayer.LayerContents()[16] = byte(cs >> 8)
-	transportLayer.LayerContents()[17] = byte(cs)
-
-	decryptedPacket := gopacket.NewSerializeBuffer()
-	if nextHeader == int(layers.IPProtocolIPv4) {
-		err = gopacket.SerializeLayers(decryptedPacket, gopacket.SerializeOptions{},
+		// forge the final packet
+		err = gopacket.SerializeLayers(forgedPacket, gopacket.SerializeOptions{},
 			&layers.Ethernet{
 				SrcMAC:       srcMAC,
 				DstMAC:       dstMAC,
 				EthernetType: layers.EthernetTypeIPv4,
 			},
 			// the original IPv4 header, until src/dst IP
-			gopacket.Payload(originalPacket.Data()[0:12]),
-			// modified addresses
+			gopacket.Payload(originalPacket[0:12]),
 			gopacket.Payload(srcIP),
 			gopacket.Payload(dstIP),
 			// rest of the original ipv4 header, if any options are present TODO
 			// gopacket.Payload(originalPacket.Data()[])
 			// tcp data
-			gopacket.Payload(transportLayer.LayerContents()),
+			gopacket.Payload(originalPacket[ipv4HeaderLength:]),
 		)
-	} else if nextHeader == int(layers.IPProtocolIPv6) {
-		err = gopacket.SerializeLayers(decryptedPacket, gopacket.SerializeOptions{},
+	} else {
+		if config.Config.IsClientGateway {
+			srcIP = originalPacket[8:24]
+			dstIP = net.ParseIP(config.Config.ClientIPv6Addr)
+		} else {
+			srcIP = net.ParseIP(config.Config.NodeIPv6Addr)
+			dstIP = originalPacket[24:40]
+		}
+
+		transportProto = int(originalPacket[6])
+		if transportProto == 6 {
+			cs = csum.TCPIPv6(srcIP, dstIP, originalPacket[ipv6HeaderLength:])
+
+			originalPacket[ipv6HeaderLength+16] = byte(cs >> 8)
+			originalPacket[ipv6HeaderLength+17] = byte(cs)
+		} else if transportProto == 17 {
+			cs = csum.UDPIPv6(srcIP, dstIP, originalPacket[ipv6HeaderLength:])
+
+			originalPacket[ipv6HeaderLength+6] = byte(cs >> 8)
+			originalPacket[ipv6HeaderLength+7] = byte(cs)
+		}
+
+		err = gopacket.SerializeLayers(forgedPacket, gopacket.SerializeOptions{},
 			&layers.Ethernet{
 				SrcMAC:       srcMAC,
 				DstMAC:       dstMAC,
 				EthernetType: layers.EthernetTypeIPv6,
 			},
 			// the original IPv6 header, until src/dst IP
-			gopacket.Payload(originalPacket.Data()[0:8]),
-			// modified addresses
+			gopacket.Payload(originalPacket[0:8]),
 			gopacket.Payload(srcIP),
 			gopacket.Payload(dstIP),
 			// tcp data
-			gopacket.Payload(transportLayer.LayerContents()),
+			gopacket.Payload(originalPacket[ipv6HeaderLength:]),
 		)
 	}
 
+	// send packet
 	if err != nil {
 		fmt.Println("Packet creation error: ", err)
 	} else {
-		send <- decryptedPacket
+		send <- forgedPacket
 	}
 }

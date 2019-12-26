@@ -59,6 +59,8 @@ func EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {
 
 	// add the IV to the start of the ciphertext
 	ciphertext := append(iv, espPayload...)
+
+	// encrypt data
 	mode := cipher.NewCBCEncrypter(block, iv)
 	mode.CryptBlocks(ciphertext[aes.BlockSize:], espPayload)
 
