@@ -4,3 +4,10 @@ deployments/logs/client.pcap
 deployments/logs/vpn-gateway.pcap
 deployments/logs/vpn-server.pcap
 deployments/logs/web-server.pcap
+docs/*.out
+docs/*.aux
+docs/*.log
+docs/*.synctex.gz
+docs/*.toc
+
+
