@@ -1,6 +1,7 @@
 \documentclass[a4paper,12pt]{report}
 	\usepackage[utf8]{inputenc}
 	\usepackage{graphicx}
+	\usepackage{hyperref}
 	\graphicspath{{figures/}}
 
 
@@ -11,18 +12,11 @@
 	\maketitle
 	\tableofcontents
 	
-	\chapter{A Brief Introduction to Networking}
-	\section{What Is Networking?}
-		In this day and age, networks are everywhere. Whenever we quickly search for something on the Internet, stream our favorite song on our phone or use an ATM, we rely on some kind of network. We can even turn off the lights or unlock our door with a simple voice command while comfortably sitting in our bed thanks to the IoT. Given the fact that the first message transmitted between two computers happened in 1959, it is astonishing how fast networking evolved - but what really is a network? 
-
-		A \textit{network}, quite simply put, is a set of hardware devices connected together, either physically or logically, with the purpose of exchanging information. \textit{Networking} is the term that describes the processes involved in designing, implementing, managing, and otherwise working with networks. 
+	\chapter{Virtual Private Networks}
+	\section{Importance of VPNs}
+		In this day and age, networking is everywhere, especially considering the exceedingly fast expansion of the Internet. The Internet, the ultimate network of networks, has radically changed our day-to-day life. Just several years ago, simple everyday habits, such as quickly searching for a piece of information on Google, streaming your favorite songs or paying your bills with just a few clicks would have seemed possible only in a distant future. And yet here we are today, achieving even more impressive tasks, making use of all kinds of networks available within our laptops, phones, tablets and even home electronics, thanks to the IoT.
 		
-		Given the fact that networks have evolved at a very fast pace since 1959, there are many network technologies that are currently used. Although this allows for creating various kind of networks, it can sometimes be difficult to explain how this complex system works. The best way to understand networking is to break it down into several pieces and then decide what those pieces do and how they interact.
+		Unfortunately, the Internet's rapid development also comes with a few important drawbacks which are regrettably often overlooked --- the most significant one being cybersecurity. \textit{Cybersecurity} is the protection of computer systems and networks from the theft and damage of hardware, software or electronic data, as well as from the disruption of the services they provide.\footnote{Wikipedia definition, \url{https://en.wikipedia.org/wiki/Computer_security}} Imagine the consequences if someone managed to obtain all of your credit card information when you are attempting to make an online payment. The damages rise significantly in the case of similar data theft at major companies, which could lead to huge amounts of loss in revenue. In fact, Juniper Research\footnote{\url{https://www.juniperresearch.com/home}} estimates that cybercrime will cost businesses over \$2 trillion in 2019 alone.
 		
-		In networking technologies, these pieces are almost always called \textit{layers}. Each layer contains hardware and/or software elements which work together to perform a particular task. Layers are conceptually arranged into a vertical \textit{stack}, called a \textit{network stack}, where each layer interacts only with the layer above and below it. The first layer, the one at the bottom, is responsible for concrete hardware tasks, such as hardware signaling and raw data transmission and, as you go up on the stack, the tasks performed get more and more oriented towards the software level.
-		
-		One crucial benefit of layering is that it allows technologies defined by different groups to interoperate. For this to be possible, it is necessary to define where each layer is in the network, what it is responsible of doing and how it can interact with others. This organization is called a \textit{networking model}.
-		
-	\section{The OSI Model}
-
+		Surprisingly enough, simple data theft was quite uncomplicated a few years ago, when HTTP was predominantly used on the web.
 \end{document}
