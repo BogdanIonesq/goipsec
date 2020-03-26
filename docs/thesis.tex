@@ -38,4 +38,20 @@
 		\end{figure}
 		
 		Advantages of site-to-site VPNs include scalability, being quite straightforward to add another site or device, and high availability, as the VPN tunnel does not depend on a device inside the network to initiate the secure connection (as would be the case with point-to-point architectures), which is why this approach is consistently used by most companies. However, for regular users who wish to remain as private as possible, site-to-site VPNs have a quite serious disadvantage. Since traffic is encapsulated and encrypted just as it leaves the site, by the VPN device or router, data is still vulnerable in the network until it reaches this point, or after it was decrypted, at the other site. As a result, anyone who can intercept our traffic at these stages is a potential threat. Although this scenario is not likely in a company, it is very probable, for example, for someone who wishes to secure his data from a public place which offers free Internet connection, such as a coffee shop or restaurant.
+		
+		Point-to-point VPNs establish a secure tunnel between two single hosts in usually separate networks, encryption and decryption taking place only at these points, therefore eliminating the aforementioned risk with site-to-site architectures.
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{point-to-point_VPN}
+			\centering
+			\caption{A point-to-point VPN tunnel between Host 1 and Host 2.}
+			\label{fig:point-to-point_VPN}
+		\end{figure}
+		
+		Point-to-point VPNs are used to form traditional consumer VPNs, where a user establishes a secure tunnel between his device and a server, which is then used as a proxy. In this situation, when the user connects to a website, for example, the network traffic is routed through the proxy server, thus appearing that the request was made from the server, not the user's device. This allows to bypass IP geo-blocking if the server is located in another region, a paramount need for VPN consumers.
+		
+		Disadvantages of point-to-point VPNs generally concern their setup and management. If the user chooses an existing VPN service provider, these are quite straight-forward and usually require just an installation of an application on the desired device. However, VPN providers charge for their services, which is why many users choose to rely on self-hosted VPNs. In this case, it is the user's job to install and manage the VPN software on both the proxy server and his/her device.
+		
+		\section{VPN Tunneling Protocols}
+		Now that we have seen how different VPN topologies operate, what networking protocols are actually used to build one?
+
 \end{document}
