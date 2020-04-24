@@ -11,5 +11,7 @@ docs/*.synctex.gz
 docs/*.toc
 docs/*.dvi
 docs/*.blg
+docs/*.bcf
+docs/*.xml
 
 
