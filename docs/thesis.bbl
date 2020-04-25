@@ -15,6 +15,16 @@ D.~Kaminsky.
 \newblock {Re: Extensions for long fat networks?}
 \newblock \url{https://marc.info/?l=openssh-unix-dev&m=105554033415532}, 2003.
 
+\bibitem{rfc4302}
+S.~Kent.
+\newblock {IP Authentication Header}.
+\newblock RFC 4302, Dec. 2005.
+
+\bibitem{rfc2406}
+S.~Kent and R.~Atkinson.
+\newblock {IP Encapsulating Security Payload (ESP)}.
+\newblock RFC 2406, Nov. 1998.
+
 \bibitem{rfc2784}
 T.~Li, D.~Farinacci, S.~P. Hanks, D.~Meyer, and P.~S. Traina.
 \newblock {Generic Routing Encapsulation (GRE)}.
@@ -40,10 +50,20 @@ E.~Rescorla and N.~Modadugu.
 \newblock {Datagram Transport Layer Security Version 1.2}.
 \newblock RFC 6347, Jan. 2012.
 
+\bibitem{rfc4301}
+K.~Seo and S.~Kent.
+\newblock {Security Architecture for the Internet Protocol}.
+\newblock RFC 4301, Dec. 2005.
+
 \bibitem{tcpmeltdown}
 O.~Titz.
 \newblock {Why TCP Over TCP Is A Bad Idea}.
 \newblock \url{http://sites.inka.de/bigred/devel/tcp-tcp.html}, Apr. 2001.
+
+\bibitem{rfc2408}
+J.~Turner, M.~J. Schertler, M.~S. Schneider, and D.~Maughan.
+\newblock {Internet Security Association and Key Management Protocol (ISAKMP)}.
+\newblock RFC 2408, Nov. 1998.
 
 \bibitem{rfc2661}
 A.~J. Valencia, G.~Zorn, W.~Palter, G.-S. Pall, M.~Townsley, and A.~Rubens.

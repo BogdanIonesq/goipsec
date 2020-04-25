@@ -1,9 +1,37 @@
+% Document settings and packages
 \documentclass[a4paper,12pt]{report}
 	\usepackage[utf8]{inputenc}
 	\usepackage{graphicx}
 	\usepackage{hyperref}
 	\usepackage{url}
+	\usepackage[acronym]{glossaries}
 	\graphicspath{{figures/}}
+	
+% Acronyms page
+\makeglossaries
+\newacronym{vpn}{VPN}{Virtual Private Network}
+\newacronym{ip}{IP}{Internet Protocol}
+\newacronym{ipv4}{IPv4}{Internet Protocol version 4}
+\newacronym{ipv6}{IPv6}{Internet Protocol version 6}
+\newacronym{tcp}{TCP}{Transmission Control Protocol}
+\newacronym{udp}{UDP}{User Datagram Protocol}
+\newacronym{gre}{GRE}{Generic Routing Encapsulation}
+\newacronym{tls}{TLS}{Transport Layer Security}
+\newacronym{ipsec}{IPsec}{Internet Protocol Security}
+\newacronym{ssh}{SSH}{Secure Shell}
+\newacronym{l2tp}{L2TP}{Layer 2 Tunneling Protocol}
+\newacronym{osi}{OSI}{Open Systems Interconnection}
+\newacronym{dtls}{DTLS}{Datagram Transport Layer Security}
+\newacronym{mipv6}{MIPv6}{Mobile IPv6}
+\newacronym{ietf}{IETF}{Internet Engineering Task Force}
+\newacronym{sa}{SA}{Security Association}
+\newacronym{esp}{ESP}{Encapsulating Security Payload}
+\newacronym{ah}{AH}{Authentication Header}
+\newacronym{spd}{SPD}{Security Policy Database}
+\newacronym{sad}{SAD}{Security Association Database}
+\newacronym{pad}{PAD}{Peer Authorization Database}
+\newacronym{spi}{SPI}{Security Parameter Index}
+
 
 \begin{document}
 	\title{Virtual Private Networks}
@@ -11,6 +39,10 @@
 	\date{\today}
 	\maketitle
 	\tableofcontents
+	
+	% Print acronyms page
+	\glsaddall
+	\printglossary[type=\acronymtype,nonumberlist,style=long]
 	
 	\chapter{Virtual Private Networks}
 	\section{Importance of VPNs}
@@ -22,20 +54,20 @@
 		
 		By now you might think that if you are using an application which encrypts its data, you should be safe on the Internet. Unfortunately, this is often not the case, as there are many places where things can go wrong. For example, in many messaging systems, messages pass through intermediary parties, such as the application's servers, which store them, from where they are retrieved by the recipient. In such scenarios, data is generally encrypted only in transit --- from the sender to the server, and from the server to the destination. Even if the servers encrypt the data at rest (which, surprisingly, does not always happen), they still must have access to the cryptographic keys used in this process, therefore information is still being vulnerable in case the actual servers are being targeted. Moreover, this allows the third party, or any other organization which has a backdoor to these servers, to freely recognize our data. Such invasion of privacy is prevented by using end-to-end encryption, a system where only the communicating users can read the messages, denying any other third party to access the cryptographic keys needed to decrypt the information.
 		
-		Even if such encryption is used, with strong cryptographic ciphers, unlikely to be broken in attacks, we still might experience some troubles. Application data that leaves our home network, in order to be routed over networks, will have an Internet Protocol (IP) header added to it, which contains our public IP address and the destination IP address. These are unique, ISP-issued addresses which can be used to monitor and censor traffic, since every service we try to access will be identified by its IP address. This could also lead to IP address-based geo-blocking and IP range ban, methods often employed by media companies, governments, intelligence agencies and many others.
+		Even if such encryption is used, with strong cryptographic ciphers, unlikely to be broken in attacks, we still might experience some troubles. Application data that leaves our home network, in order to be routed over networks, will have an \acrfull{ip} header added to it, which contains our public IP address and the destination IP address. These are unique, ISP-issued addresses which can be used to monitor and censor traffic, since every service we try to access will be identified by its IP address. This could also lead to IP address-based geo-blocking and IP range ban, methods often employed by media companies, governments, intelligence agencies and many others.
 		
 		So far we have only talked about the consequences from the point of view of a casual user, but damages rise significantly in the case of cyber attacks against major businesses, usually leading to huge amounts of loss in revenue. In fact, Juniper Research estimated that the average cost of a data breach in 2020 will exceed \$150 million, as more business infrastructure gets connected \cite{junipercybercrime}. In order to mitigate cyber attacks, they usually maintain one or more private networks inside their offices and only from within these controlled networks employees can access necessary resources. Such resources can actually be part of the same network, thus making transfer of data safe, since everything happens inside the private network, but inevitably some resources, such as cloud services, will be accessed through the Internet. Some employees must also be able to connect to the private network through the Internet even if they are part of another network, in order to access its resources, possibly in case of time-critical emergencies or just to work remotely from their homes. Therefore, many companies need a technology that allows secure communication between their private network and another host across a public network, or even to another different private network, such as communication between two private networks owned by different offices of the same company, located in distant regions.
 		
-		The solution to all the aforementioned problems, and to many other vulnerabilities while using a public network, is a Virtual Private Network (VPN).
+		The solution to all the aforementioned problems, and to many other vulnerabilities while using a public network, is a \acrfull{vpn}.
 		
-		\section{What Is a VPN?}
+		\section{What Is a Virtual Private Network?}
 		Security over networks is usually described by three components: confidentiality, integrity and authenticity. Confidentiality, often achieved by encryption, guarantees that data can only be understood by authorized entities. Integrity ensures that the data has not been modified between these endpoints. Finally, authenticity proves that data originated from an authorized party, and not from another source. Apart from these three, another concept which is often massively desired over public networks refers to anonimity, which assures that information we send out does not divulge our identity. All of these can be achieved by VPNs, if implemented correctly.
 		
-		A Virtual Private Network (VPN) extends a private network by allowing hosts which are not part of it to send and receive data over a public network, usually the Internet, as if they are directly connected to the private network. VPNs are build by establishing a virtual link of communication between two nodes, one being part of the private network. The second node will forward its traffic to it, the first node acting like a proxy, therefore appearing as the traffic actually originated from within the private network from which it is part of. Since encryption is a common, yet not an inherent part of a VPN connection, this channel of communication is usually called a \textit{tunnel} --- only the two endpoints being able to understand the data passing through it. 
+		A \acrfull{vpn} extends a private network by allowing hosts which are not part of it to send and receive data over a public network, usually the Internet, as if they are directly connected to the private network. VPNs are build by establishing a virtual link of communication between two nodes, one being part of the private network. The second node will forward its traffic to it, the first node acting like a proxy, therefore appearing as the traffic actually originated from within the private network from which it is part of. Since encryption is a common, yet not an inherent part of a VPN connection, this channel of communication is usually called a \textit{tunnel} --- only the two endpoints being able to understand the data passing through it. 
 		
 		Classified by the type of topology of connections, defined by the location of the two endpoints, VPNs usually are of three types: site-to-site, point-to-point (sometimes also called host-to-host), which are the most common, and a combination of the two, point-to-site.
 		
-		Site-to-site VPNs, illustrated in figure \ref{fig:site-to-site_VPN}, establish a tunnel between two whole networks, thus allowing any authorized host in any of the two networks to make use of it. Such architecture is frequently used by businesses to securely connect networks owned by the same company in different regions.
+		Site-to-site VPNs, illustrated in figure \ref{fig:site-to-site_VPN}, establish a tunnel between two whole networks, therefore allowing any authorized host in any of the two networks to make use of it. Such architecture is frequently used by businesses to securely connect networks owned by the same company in different regions.
 		\begin{figure}[h]
 			\includegraphics[width=\textwidth]{site-to-site_VPN}
 			\centering
@@ -45,11 +77,11 @@
 		
 		Advantages of site-to-site VPNs include scalability, being quite straightforward to add another site, or more devices inside one of the networks, and high availability, as the VPN tunnel does not depend on a device inside the network to initiate and maintain the secure connection. However, for regular users who wish to remain as private as possible, site-to-site VPNs have a quite serious disadvantage. Since traffic is secured just as it leaves the site, by the VPN device or router, data is still vulnerable in the network until it reaches this point, or after it was decrypted, at the other site. As a result, anyone who can intercept our traffic at these stages is a potential threat. Although this scenario is not likely to happen in a business office, it is very probable, for example, for someone who wishes to secure his data from a public place which offers free Internet connection, such as a coffee shop or restaurant.
 		
-		Point-to-point VPNs (figure \ref{fig:point-to-point_VPN}) establish a secure tunnel between two single hosts in usually separate networks, encryption and decryption taking place only at these points, therefore eliminating the aforementioned risk present with site-to-site architectures.
+		Point-to-point VPNs (figure \ref{fig:point-to-point_VPN}) establish a secure tunnel between two single hosts in usually separate networks, encryption and decryption taking place only at these points, therefore providing end-to-end encryption and eliminating the aforementioned risk present with site-to-site architectures.
 		\begin{figure}[h]
 			\includegraphics[width=\textwidth]{point-to-point_VPN}
 			\centering
-			\caption{A point-to-point VPN tunnel between two hosts. If one of the endpoints is down or unreachable, no tunnel can be established.}
+			\caption{A point-to-point VPN tunnel between two hosts. The tunnel is usually initiated by one endpoint, but it is dependent on both; if one of the endpoints is down or unreachable, no tunnel can be established.}
 			\label{fig:point-to-point_VPN}
 		\end{figure}
 		
@@ -66,16 +98,37 @@
 			\label{fig:ip-in-ip_packet}
 		\end{figure}
 		
-		Generic Routing Encapsulation (GRE) \cite{rfc2784}, a protocol fairly similar to IP in IP, developed by Cisco Systems, and Layer 2 Tunneling Protocol (L2TP) \cite{rfc2661} are just another two examples of tunneling protocols frequently used. However, just like IP in IP, all of these protocols do not provide any confidentiality or integrity. They just encapsulate the data received, without modifying it in order to provide encryption. To achieve this, they generally rely on other protocols.
+		\acrfull{gre} \cite{rfc2784}, a protocol fairly similar to IP in IP, developed by Cisco Systems, and Layer 2 Tunneling Protocol (L2TP) \cite{rfc2661} are just another two examples of tunneling protocols frequently used. However, just like IP in IP, all of these protocols do not provide any confidentiality or integrity. They just encapsulate the data received, without modifying it in order to provide encryption. To achieve this, they generally rely on other protocols.
 		
-		Internet Protocol Security (IPsec) \cite{rfc6071}, Transport Layer Security (TLS) \cite{rfc8446} and Secure Shell (SSH) \cite{rfc4253} are the most often used protocols for secure network services over an insecure network. A key difference between these three protocols is the layer at which they operate. While IPsec is generally considered a network layer protocol, TLS and SSH depend on a reliable stream of bytes and are therefore implemented over TCP, making them layer 5 or above, or just application layer protocols in the TCP/IP suite. The fact that IPsec performs at a lower layer than the rest and it is not dependent on TCP increases its flexibility and capabilities, being able to secure any transport layer protocol, such as UDP. Datagram Transport Layer Security (DTLS) \cite{rfc6347} was also developed to implement TLS over UDP. Tunneling over UDP is sometimes preferred to avoid the TCP meltdown problem (also known as TCP over TCP), in which tunneling a TCP-encapsulating payload induces a dramatic loss in transmission performance (even up to 20\%)\cite{tcpmeltdown}. OpenSSH, an open source suite of secure networking utilities based on SSH avoids the meltdown by decapsulating and re-encapsulating TCP, only sending the payload through the tunnel \cite{opensshmeltdown}.
+		Internet Protocol Security (IPsec) \cite{rfc6071}, Transport Layer Security (TLS) \cite{rfc8446} and Secure Shell (SSH) \cite{rfc4253} are the most often used protocols for secure network services over an insecure network. A key difference between these three protocols is the OSI layer at which they operate. While IPsec is generally considered a network layer protocol, TLS and SSH depend on a reliable stream of bytes and are therefore implemented over TCP, making them layer 5 or above, or just application layer protocols in the TCP/IP suite. The fact that IPsec performs at a lower layer than the rest and it is not dependent on TCP increases its flexibility and capabilities, being able to secure any transport layer protocol, such as UDP. Datagram Transport Layer Security (DTLS) \cite{rfc6347} was also developed to implement TLS over UDP. Tunneling over UDP is sometimes preferred to avoid the TCP meltdown problem (also known as TCP over TCP), in which tunneling a TCP-encapsulating payload induces a dramatic loss in transmission performance (even up to 20\%)\cite{tcpmeltdown}. OpenSSH, an open source suite of secure networking utilities based on SSH avoids the meltdown by decapsulating and re-encapsulating TCP, only sending the payload through the tunnel \cite{opensshmeltdown}.
 		
 		IPsec, TLS and SSH use a wide variety of strong cryptographic algorithms, providing robust authentication, confidentiality and integrity, amongst many other services. All three of them support tunneling and are currently used to establish and maintain secure tunnels across many networks worldwide. However, the more complex IPsec is still the most viable and preferred option for tunneling, especially for site-to-site VPNs, while TLS and SSH are better for secure remote access, being more straightforward and easier to setup.
 		
 	\chapter{Internet Protocol Security}
 	\section{Components}
-		The goal of Internet Protocol Security is to provide security at the network layer, being used worldwide to either deploy a VPN (site-to-site or host-to-site) or to implement end-to-end security. It is also often used by other protocols (e.g. L2TP, MIPv6, GRE) to protect some or all of their traffic.
+		The goal of Internet Protocol Security (IPsec) is to provide security at the network layer, being used worldwide to deploy a variety of VPNs, therefore guaranteeing either secure traffic between networks or in case of remote access, or end-to-end security. It is also often used by other protocols (e.g. L2TP, MIPv6, GRE) to protect some or all of their traffic.
 		
+		IPsec is not a single protocol, but rather a set of network protocols, each one with critical and specific tasks, working together to achieve the main goal. The complex IPsec protocol suite can be broken into three essential parts which will be thoroughly explained in the next sections:
+		\begin{itemize}
+			\item \textbf{Security Associations} define the security services and attributes of a connection shared by two network entities
+			\item \textbf{Authentication Header} provides connectionless data integrity and data origin authentication for IP datagrams (hereafter referred to as just integrity) \cite{rfc4302}
+			\item \textbf{Encapsulating Security Payload} can provide both data confidentiality and integrity, and limited traffic flow confidentiality \cite{rfc2406}
+		\end{itemize}
+		
+		Although a decent part of the IPsec stack is already directly embedded into the Linux kernel, guaranteeing efficient packet processing with minimum overhead, some daemons are still required in user space, generally those regarding Security Associations.
+		
+	\section{Security Associations}
+	IPsec provides data confidentiality and integrity through the two fundamental security protocols previously mentioned, the Authentication Header (AH) and Encapsulating Security Protocol (ESP). Since a VPN device might handle many secure streams of data with different hosts at the same time, when an IP datagram employing AH and/or ESP arrives, how does it know which set of security parameters (cryptographic algorithm, key and policies) to use for that particular connection? Moreover, both AH and ESP support a wide variety of cryptographic systems, and therefore the two endpoints must agree on which algorithm to employ, and perhaps generate and exchange cryptographic keys. As you can see, many attributes and policies must be negotiated and bound to a specific connection between two entities before establishing and using a secure tunnel. This is achieved by Security Associations. 
+	
+	A Security Association (SA) is a relationship between two or more network entities that describe how the entities will utilize security services to communicate securely. This relationship is represented by a set of information that can be considered a contract between the entities, agreed upon and shared between them \cite{rfc2408}. 
+	
+	An SA describes only one-way traffic, so, in order to secure typical bi-directional communication between two IPsec-enabled systems, a pair of SAs (one in each direction) is required \cite{rfc4301}. Information is stored in a database, where each SA is uniquely identified by a triple consisting of a Security Parameter Index (SPI), an IP Destination Address, and a security protocol (AH or ESP) identifier. The SPI is a random generated 32-bit value used by a receiver to identify the SA to which the incoming packet should be bound, and is a mandatory field in the ESP and AH headers.
+	
+	A model defined in RFC 4301 outlines three databases in order to store SA information: the Security Policy Database (SPD), the Security Association Database (SAD), and the Peer Authorization Database (PAD) \cite{rfc4301}.
+	
+	\subsection{Security Policy Database}
+
+% Print bibliography
 \bibliographystyle{abbrv}
 \bibliography{bibliography}
 

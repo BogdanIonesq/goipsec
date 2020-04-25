@@ -13,5 +13,12 @@ docs/*.dvi
 docs/*.blg
 docs/*.bcf
 docs/*.xml
+docs/*.acn
+docs/*.acr
+docs/*.alg
+docs/*.glg
+docs/*.glo
+docs/*.gls
+docs/*.ist
 
 
