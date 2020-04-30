@@ -31,6 +31,7 @@
 \newacronym{sad}{SAD}{Security Association Database}
 \newacronym{pad}{PAD}{Peer Authorization Database}
 \newacronym{spi}{SPI}{Security Parameter Index}
+\newacronym{isakmp}{ISAKMP}{Internet Security Association and Key Management Protocol}
 
 
 \begin{document}
@@ -122,12 +123,54 @@
 	
 	A Security Association (SA) is a relationship between two or more network entities that describe how the entities will utilize security services to communicate securely. This relationship is represented by a set of information that can be considered a contract between the entities, agreed upon and shared between them \cite{rfc2408}. 
 	
-	An SA describes only one-way traffic, so, in order to secure typical bi-directional communication between two IPsec-enabled systems, a pair of SAs (one in each direction) is required \cite{rfc4301}. Information is stored in a database, where each SA is uniquely identified by a triple consisting of a Security Parameter Index (SPI), an IP Destination Address, and a security protocol (AH or ESP) identifier. The SPI is a random generated 32-bit value used by a receiver to identify the SA to which the incoming packet should be bound, and is a mandatory field in the ESP and AH headers.
+	An SA describes only one-way traffic, so, in order to secure typical bi-directional communication between two IPsec-enabled systems, a pair of SAs (one in each direction) is required \cite{rfc4301}. Information is stored in a database, where each SA is uniquely identified by a triple consisting of a Security Parameter Index (SPI), an IP Destination Address, and a security protocol (AH or ESP) identifier. The SPI is a random generated 32-bit value used by a receiver to identify the SA to which the incoming packet should be bound (the IP address and protocol will be automatically inferred from the packet headers), and is a mandatory field in the ESP and AH headers.
 	
-	A model defined in RFC 4301 outlines three databases in order to store SA information: the Security Policy Database (SPD), the Security Association Database (SAD), and the Peer Authorization Database (PAD) \cite{rfc4301}.
+	A model defined in RFC 4301 outlines three databases in order to store various SA information: the Security Policy Database (SPD), the Security Association Database (SAD), and the Peer Authorization Database (PAD) \cite{rfc4301}.
 	
 	\subsection{Security Policy Database}
+		A Security Policy Database (SPD) specifies processing rules for different IP datagrams received by the device. The SPD is consulted during processing of all inbound or outbound traffic, including traffic not protected by IPsec, that traverses the IPsec boundary. For a given packet, three processing rules are defined and stored in the database:
+		\begin{itemize}
+			\item DISCARD: Packets that match this rule will be immediately discarded by the device.
+			\item BYPASS: Packets that match this rule are allowed to cross the IPsec boundary, not needing any further IPsec processing.
+			\item PROTECT: Packets that match this rule are afforded IPsec protection. In this case, the SPD usually points to an SAD entry which defines the security services to be employed (AH and/or ESP), as well as their attributes (e.g. mode of operation, algorithm).
+		\end{itemize}
+		
+	\subsection{Security Association Database}
+		To determine what to do with a particular datagram, a device first checks the SPD, in order to see if the datagram should be discarded, allowed to pass through unchanged or offered security services. If the latter is the case, the SAD is interrogated to find the particular security mechanisms to be applied.
+		
+		More formally, a Security Association Database stores the parameters associated
+with one particular SA. For outbound processing, each SAD entry is pointed to by entries in the SPD cache.  For inbound processing, for unicast SAs, the SPI is used either alone to look up an SA or in conjunction with the IPsec protocol type \cite{rfc4301}.
 
+	RFC 4301 describes which data items must be in an SAD entry:
+	\begin{itemize}
+		\item Security Parameter Index (SPI).
+		\item Sequence Number Counter: a 64-bit counter used to generate the Sequence Number field in AH or ESP headers.
+		\item Sequence Counter Overflow: flag indicating whether overflow of the sequence number counter should prevent transmission of additional packets on the SA, or whether rollover is permitted.
+		\item Anti-Replay Window: a 64-bit counter used to determine whether an inbound AH or ESP packet is a replay
+		\item AH Authentication algorithm, key, etc.
+		\item ESP encryption algorithm, key, mode, IV, etc.
+		\item ESP integrity algorithm, keys, etc.
+		\item ESP combined mode algorithms, key(s), etc.
+		\item Lifetime of the SA: a time interval after which an SA must be replaced with a new SA (and new SPI) or terminated.
+	\end{itemize}
+	
+	\subsection{Peer Authorization Database}
+	The Peer Authorization Database (PAD) simply provides a link between the SPD and a security association management protocol, such as IKE or KINK, along with other constraints and information related to their peers.
+	
+	\subsection{Internet Security Association and Key Management Protocol}
+	The Internet Security Association and Key Management Protocol (ISAKMP) is responsible for establishing, negotiating, modifying and deleting Security Associations, not only for IPsec, but for many other security protocols. ISAKMP is designed to be key exchange independent, supporting any such protocol, although Internet Key Exchange (IKE) and Kerberized Internet Negotiation of Keys (KINK) are the most common.
+	
+	ISAKMP defines procedures and packet formats which are used to transfer information such as security association data, or key exchange data, in order to establish a security association between negotiating entities. This is done in two phases:
+	\begin{itemize}
+		\item In the first phase, two entities (e.g.  ISAKMP servers) agree on how to protect further negotiation traffic between themselves, establishing an ISAKMP SA.
+		\item In the second phase, this ISAKMP SA is then used to protect the negotiations for the Protocol SA being requested.
+	\end{itemize}
+	
+	While bootstrapping secure channels between systems, ISAKMP cannot assume the existence of security services, and must provide some protections for itself.  Therefore, ISAKMP considers an ISAKMP Security Association to be different than other types, and manages ISAKMP SAs itself, in their own name space \cite{rfc2408}. In order to identify ISAKMP SAs, two cookie fields in the ISAKMP header are used. These cookies are usually a hash over the IP Source and Destination Address, the UDP Source and Destination Ports, a locally generated secret random value and the current time.
+	
+	Although ISAKMP can be implemented over any transport protocol or even over IP itself, it is usually used over UDP on port 500.
+	
+	\subsection{Internet Key Exchange}
 % Print bibliography
 \bibliographystyle{abbrv}
 \bibliography{bibliography}
