@@ -4,6 +4,11 @@
 \url{https://www.juniperresearch.com/press/press-releases/cybercrime-cost-businesses-over-2trillion-by-2019},
   2015.
 
+\bibitem{rfc5996}
+P.~Eronen, Y.~Nir, P.~E. Hoffman, and C.~Kaufman.
+\newblock {Internet Key Exchange Protocol Version 2 (IKEv2)}.
+\newblock RFC 5996, Sept. 2010.
+
 \bibitem{rfc6071}
 S.~Frankel and S.~Krishnan.
 \newblock {IP Security (IPsec) and Internet Key Exchange (IKE) Document
@@ -24,6 +29,12 @@ S.~Kent.
 S.~Kent and R.~Atkinson.
 \newblock {IP Encapsulating Security Payload (ESP)}.
 \newblock RFC 2406, Nov. 1998.
+
+\bibitem{kozierok2005tcp}
+C.~M. Kozierok.
+\newblock {\em The TCP/IP Guide: A Comprehensive, Illustrated Internet
+  Protocols Reference}.
+\newblock No Starch Press, 2005.
 
 \bibitem{rfc2784}
 T.~Li, D.~Farinacci, S.~P. Hanks, D.~Meyer, and P.~S. Traina.

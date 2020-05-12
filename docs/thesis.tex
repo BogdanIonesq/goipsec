@@ -5,6 +5,7 @@
 	\usepackage{hyperref}
 	\usepackage{url}
 	\usepackage[acronym]{glossaries}
+	\usepackage{glossary-mcols}
 	\graphicspath{{figures/}}
 	
 % Acronyms page
@@ -32,6 +33,10 @@
 \newacronym{pad}{PAD}{Peer Authorization Database}
 \newacronym{spi}{SPI}{Security Parameter Index}
 \newacronym{isakmp}{ISAKMP}{Internet Security Association and Key Management Protocol}
+\newacronym{icv}{ICV}{Integrity Check Value}
+\newacronym{ike}{IKE}{Internet Key Exchange}
+\newacronym{iana}{IANA}{Internet Assigned Numbers Authority}
+
 
 
 \begin{document}
@@ -43,11 +48,12 @@
 	
 	% Print acronyms page
 	\glsaddall
-	\printglossary[type=\acronymtype,nonumberlist,style=long]
+	\printglossary[type=\acronymtype,nonumberlist,style=listdotted]
 	
 	\chapter{Virtual Private Networks}
 	\section{Importance of VPNs}
-		In this day and age, networking is everywhere, especially considering the exceedingly fast expansion of the Internet. The Internet, the ultimate network of networks, has radically changed our day-to-day life. Just several years ago, simple everyday habits, such as quickly searching for a piece of information on Google, online shopping, streaming your favorite songs or paying your bills with just a few clicks would have seemed possible only in a distant future. And yet here we are today, achieving even more impressive tasks, making use of all kinds of networks available within our laptops, phones, tablets and even home electronics, thanks to the IoT.
+		
+	In this day and age, networking is everywhere, especially considering the exceedingly fast expansion of the Internet. The Internet, the ultimate network of networks, has radically changed our day-to-day life. Just several years ago, simple everyday habits, such as quickly searching for a piece of information on Google, online shopping, streaming your favorite songs or paying your bills with just a few clicks would have seemed possible only in a distant future. And yet here we are today, achieving even more impressive tasks, making use of all kinds of networks available within our laptops, phones, tablets and even home electronics, thanks to the IoT.
 		
 		Unfortunately, the Internet's rapid development also comes with a few important drawbacks which are regrettably often overlooked --- the most significant one being cybersecurity. \textit{Cybersecurity} is the protection of computer systems and networks from the theft and damage of hardware, software or electronic data, as well as from the disruption of the services they provide. Most often, networks, full of information, are the first frontier when trying to exploit systems,  which is why network security represents such an important key aspect against cybercrime.
 		
@@ -106,7 +112,7 @@
 		IPsec, TLS and SSH use a wide variety of strong cryptographic algorithms, providing robust authentication, confidentiality and integrity, amongst many other services. All three of them support tunneling and are currently used to establish and maintain secure tunnels across many networks worldwide. However, the more complex IPsec is still the most viable and preferred option for tunneling, especially for site-to-site VPNs, while TLS and SSH are better for secure remote access, being more straightforward and easier to setup.
 		
 	\chapter{Internet Protocol Security}
-	\section{Components}
+	\section{Description }
 		The goal of Internet Protocol Security (IPsec) is to provide security at the network layer, being used worldwide to deploy a variety of VPNs, therefore guaranteeing either secure traffic between networks or in case of remote access, or end-to-end security. It is also often used by other protocols (e.g. L2TP, MIPv6, GRE) to protect some or all of their traffic.
 		
 		IPsec is not a single protocol, but rather a set of network protocols, each one with critical and specific tasks, working together to achieve the main goal. The complex IPsec protocol suite can be broken into three essential parts which will be thoroughly explained in the next sections:
@@ -116,10 +122,12 @@
 			\item \textbf{Encapsulating Security Payload} can provide both data confidentiality and integrity, and limited traffic flow confidentiality \cite{rfc2406}
 		\end{itemize}
 		
+		IPsec has two main modes of operation which defined how AH and ESP behave, namely transport mode and tunnel mode. % TODO
+		
 		Although a decent part of the IPsec stack is already directly embedded into the Linux kernel, guaranteeing efficient packet processing with minimum overhead, some daemons are still required in user space, generally those regarding Security Associations.
 		
 	\section{Security Associations}
-	IPsec provides data confidentiality and integrity through the two fundamental security protocols previously mentioned, the Authentication Header (AH) and Encapsulating Security Protocol (ESP). Since a VPN device might handle many secure streams of data with different hosts at the same time, when an IP datagram employing AH and/or ESP arrives, how does it know which set of security parameters (cryptographic algorithm, key and policies) to use for that particular connection? Moreover, both AH and ESP support a wide variety of cryptographic systems, and therefore the two endpoints must agree on which algorithm to employ, and perhaps generate and exchange cryptographic keys. As you can see, many attributes and policies must be negotiated and bound to a specific connection between two entities before establishing and using a secure tunnel. This is achieved by Security Associations. 
+	IPsec provides data confidentiality and integrity through the two fundamental security protocols previously mentioned, the Authentication Header (AH) and Encapsulating Security Protocol (ESP). However, since a VPN device might handle many secure streams of data with different hosts at the same time, when an IP datagram employing AH and/or ESP arrives, how does it know which set of security parameters (cryptographic algorithm, keys, policies etc.) to use for that particular connection? Moreover, both AH and ESP support a wide variety of cryptographic ciphers, and therefore the two endpoints must agree beforehand on which exact algorithm to employ, and perhaps generate and exchange cryptographic keys. As you can see, many more security attributes and policies must be negotiated and bound to a specific connection between entities before establishing and actually using an IPsec tunnel. This is the purpose of Security Associations. 
 	
 	A Security Association (SA) is a relationship between two or more network entities that describe how the entities will utilize security services to communicate securely. This relationship is represented by a set of information that can be considered a contract between the entities, agreed upon and shared between them \cite{rfc2408}. 
 	
@@ -157,20 +165,56 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 	\subsection{Peer Authorization Database}
 	The Peer Authorization Database (PAD) simply provides a link between the SPD and a security association management protocol, such as IKE or KINK, along with other constraints and information related to their peers.
 	
-	\subsection{Internet Security Association and Key Management Protocol}
-	The Internet Security Association and Key Management Protocol (ISAKMP) is responsible for establishing, negotiating, modifying and deleting Security Associations, not only for IPsec, but for many other security protocols. ISAKMP is designed to be key exchange independent, supporting any such protocol, although Internet Key Exchange (IKE) and Kerberized Internet Negotiation of Keys (KINK) are the most common.
-	
-	ISAKMP defines procedures and packet formats which are used to transfer information such as security association data, or key exchange data, in order to establish a security association between negotiating entities. This is done in two phases:
-	\begin{itemize}
-		\item In the first phase, two entities (e.g.  ISAKMP servers) agree on how to protect further negotiation traffic between themselves, establishing an ISAKMP SA.
-		\item In the second phase, this ISAKMP SA is then used to protect the negotiations for the Protocol SA being requested.
-	\end{itemize}
-	
-	While bootstrapping secure channels between systems, ISAKMP cannot assume the existence of security services, and must provide some protections for itself.  Therefore, ISAKMP considers an ISAKMP Security Association to be different than other types, and manages ISAKMP SAs itself, in their own name space \cite{rfc2408}. In order to identify ISAKMP SAs, two cookie fields in the ISAKMP header are used. These cookies are usually a hash over the IP Source and Destination Address, the UDP Source and Destination Ports, a locally generated secret random value and the current time.
-	
-	Although ISAKMP can be implemented over any transport protocol or even over IP itself, it is usually used over UDP on port 500.
 	
 	\subsection{Internet Key Exchange}
+		Internet Key Exchange (IKE) is one of the most often used protocols used to establish, negotiate, modify and delete Security Associations between IPsec nodes. Unlike AH and ESP, IKE is not directly embedded into the Linux kernel, and therefore a daemon in user space is required. Such applications generally implement IKE version 2 (IKEv2), an improvement over the initial IKE version 1 (IKEv1). A draft for IKE version 3 (IKEv3) exists, but it is not yet adopted.
+		
+		IKE is partly based on three other designs:
+		\begin{itemize}
+			\item Internet Security Association and Key Management Protocol (ISAKMP), a framework defining procedures and packet formats to establish, negotiate, modify and delete SAs
+			\item OAKLEY Key Determination Protocol, a generic key exchange protocol
+			\item SKEME, a versatile key exchange technique which provides anonymity, repudiability, and quick key refreshment
+		\end{itemize}
+		
+		Since both AH and ESP almost always require an SA, IKE is the first protocol employed, representing an initial step towards a secure connection. In order to actually establish an IPsec SA, IKE goes through two phases. 
+		
+		IKE phase 1 is used as a setup stage where the peers agree on how to exchange further information securely. This is done through an ISAKMP SA negotiation, which establishes a secure channel of communication, much needed by phase 2. During this ISAKMP session, the IPsec nodes are authenticated, through either a pre-shared key, digital signature, or public key encryption \cite{rfc5996}, an encryption algorithm and hash algorithm are chosen, and a Diffie-Hellman group is created.
+		
+		In IKE phase 2 the secure tunnel previously established is used to safely negotiate the actual IPsec SA, where the parameters for AH and ESP are decided. 
+		
+		IKE is usually implemented over UDP on port 500.
+		
+		\section{Authentication Header}
+		\subsection{Description}
+		Authentication Header (AH) is one of the two core protocols of the IPsec suite. Its main objective is to provide integrity for IP datagrams, term which is used to embody two critical concepts:
+		\begin{itemize}
+			\item \textbf{Connectionless integrity} guarantees that the essential information contained within a packet has not been changed in transit, either by a malicious entity or due to errors
+			\item \textbf{Data origin authentication} ensures the IP datagram originated from a trusted source
+		\end{itemize}
+		
+		This is achieved by employing a cryptographic hash algorithm, used to compute an integrity check value (ICV) over the majority of the IP datagram. The calculated ICV is then added in an AH header which is inserted in the outgoing packet. The receiving IPsec device repeats the ICV computation, and compares it with the one in the AH header. If the two values differ, the packet was modified in transit and is discarded.
+		
+		\subsection{Format}
+		The AH format (figure \ref{ah_header}) is quite simple, containing the following fields:
+	\begin{itemize}
+	\item Next Header (8 bits) is used to link headers together and identifies the next protocol used after AH. The value is chosen from the set of IP Protocol Numbers defined by IANA. For example, a value of 4 indicates IPv4, a value of 41 indicates IPv6, and a value of 6 indicates TCP. AH itself has the value of 41 assigned.
+	\item Payload Length (8 bits) specifies the length of AH in 32-bit words (4-byte units), minus 2. Therefore, for example,  if an integrity algorithm yields a 96-bit authentication value, this length field will be the value 4 (3 32-bit word fixed fields plus 3 32-bit words for the ICV, minus 2) \cite{rfc4302}.
+	\item Reserved (16 bits) is not currently used and it is set to zero. 
+	\item Security Parameter Index (32 bits) identifies the SA to which an incoming packet is bound.
+	\item Sequence Number (32 bits) is a counter field that is initialized to zero when an SA is formed between two devices, and then incremented for each datagram sent using that particular SA. This uniquely identifies each datagram on an SA and is used to provide protection against replay attacks by preventing the retransmission of captured datagrams \cite{kozierok2005tcp}.
+	\item Authentication Data (variable size in order to support different hashing algorithms, but it must be a multiple of 32 bits) contains the ICV. The entire header must be a multiple of either 32 bits (for IPv4) or 64 bits (for IPv6), so additional padding may be added to the Authentication Data field if necessary.
+\end{itemize}			
+		
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{ah_header}
+			\centering
+			\caption{IPsec Authentication Header (AH) format}
+			\label{ah_header}
+		\end{figure}
+		
+		\subsection{Placement}
+		AH placement depends on the IPsec mode of operation and whether IPv4 or IPv6 is used.
+		
 % Print bibliography
 \bibliographystyle{abbrv}
 \bibliography{bibliography}
