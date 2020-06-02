@@ -4,8 +4,8 @@
 	\usepackage{graphicx}
 	\usepackage{hyperref}
 	\usepackage{url}
+	\usepackage{geometry}
 	\usepackage[acronym]{glossaries}
-	\usepackage{glossary-mcols}
 	\graphicspath{{figures/}}
 	
 % Acronyms page
@@ -36,19 +36,39 @@
 \newacronym{icv}{ICV}{Integrity Check Value}
 \newacronym{ike}{IKE}{Internet Key Exchange}
 \newacronym{iana}{IANA}{Internet Assigned Numbers Authority}
+\newacronym{nat}{NAT}{Network Address Translation}
+\newacronym{iv}{IV}{Initialization Vector}
 
 
 
 \begin{document}
-	\title{Virtual Private Networks}
+	\begin{titlepage}
+		\newgeometry{top=15mm}
+		\begin{center}
+			\vspace{-10in}
+			{\LARGE University of Bucharest \\
+			Faculty of Mathematics and Computer Science }
+			\vfill
+			\textbf{\huge Virtual Private Networks} \\
+			\vspace{5mm}
+			{\Large Bogdan Ionescu} \\
+			\vspace{20mm}
+			\begin{flushleft}{\large Supervisor \\
+			Lect. Dr. Eng. Paul Irofti}
+			\end{flushleft}
+			\vfill
+			\today
+		\restoregeometry
+		\end{center}
+	\end{titlepage}
 	\author{Bogdan Ionescu}
 	\date{\today}
-	\maketitle
 	\tableofcontents
 	
 	% Print acronyms page
+	\setlength{\glsdescwidth}{\hsize}
 	\glsaddall
-	\printglossary[type=\acronymtype,nonumberlist,style=listdotted]
+	\printglossary[type=\acronymtype,nonumberlist,style=long]
 	
 	\chapter{Virtual Private Networks}
 	\section{Importance of VPNs}
@@ -99,7 +119,7 @@
 		
 		For example, IP in IP \cite{rfc2003} is a tunneling protocol which encapsulates an IP datagram within another IP datagram, as shown in figure \ref{fig:ip-in-ip_packet}. The source IP in the outer IP header will correspond to the entry point of the tunnel, while the destination IP will reveal the exit point, therefore guaranteeing that the packet will be routed to the other VPN endpoint. Except to the encapsulator decrementing the TTL field in the inner IP header, the packet payload remains unchanged during its delivery to the tunnel exit point. Once there, decapsulation takes place, removing the outer IP header and reconstructing the original packet, which will be sent to its original destination.
 		\begin{figure}[h]
-			\includegraphics[width=\textwidth]{ip-in-ip_packet}
+			\includegraphics[width=\textwidth]{ip_in_ip}
 			\centering
 			\caption{IP in IP encapsulates the IP layer (IP header and payload) from the original packet within another IP packet. To differentiate between the two IP headers, the first one is often called the outer IP header.}
 			\label{fig:ip-in-ip_packet}
@@ -109,7 +129,7 @@
 		
 		Internet Protocol Security (IPsec) \cite{rfc6071}, Transport Layer Security (TLS) \cite{rfc8446} and Secure Shell (SSH) \cite{rfc4253} are the most often used protocols for secure network services over an insecure network. A key difference between these three protocols is the OSI layer at which they operate. While IPsec is generally considered a network layer protocol, TLS and SSH depend on a reliable stream of bytes and are therefore implemented over TCP, making them layer 5 or above, or just application layer protocols in the TCP/IP suite. The fact that IPsec performs at a lower layer than the rest and it is not dependent on TCP increases its flexibility and capabilities, being able to secure any transport layer protocol, such as UDP. Datagram Transport Layer Security (DTLS) \cite{rfc6347} was also developed to implement TLS over UDP. Tunneling over UDP is sometimes preferred to avoid the TCP meltdown problem (also known as TCP over TCP), in which tunneling a TCP-encapsulating payload induces a dramatic loss in transmission performance (even up to 20\%)\cite{tcpmeltdown}. OpenSSH, an open source suite of secure networking utilities based on SSH avoids the meltdown by decapsulating and re-encapsulating TCP, only sending the payload through the tunnel \cite{opensshmeltdown}.
 		
-		IPsec, TLS and SSH use a wide variety of strong cryptographic algorithms, providing robust authentication, confidentiality and integrity, amongst many other services. All three of them support tunneling and are currently used to establish and maintain secure tunnels across many networks worldwide. However, the more complex IPsec is still the most viable and preferred option for tunneling, especially for site-to-site VPNs, while TLS and SSH are better for secure remote access, being more straightforward and easier to setup.
+		IPsec, TLS and SSH use a wide variety of strong cryptographic algorithms, providing robust authentication, confidentiality and integrity, amongst many other services. All three of them support tunneling and are currently used to establish and maintain secure tunnels across many networks worldwide. However, the more complex IPsec is still the most viable and preferred option for tunneling, especially for site-to-site VPNs, while TLS and SSH are better for secure remote access, being more straightforward and easier to set up.
 		
 	\chapter{Internet Protocol Security}
 	\section{Description }
@@ -122,7 +142,7 @@
 			\item \textbf{Encapsulating Security Payload} can provide both data confidentiality and integrity, and limited traffic flow confidentiality \cite{rfc2406}
 		\end{itemize}
 		
-		IPsec has two main modes of operation which defined how AH and ESP behave, namely transport mode and tunnel mode. % TODO
+		IPsec has two main modes of operation which define how AH and ESP behave, namely transport mode and tunnel mode. When transport mode is used, only the IP payload is encapsulated and secured by one or both security headers. Tunnel mode encapsulates the entire IP packet to provide a secure hop between two gateways, quite similar with IP in IP. The latter is used to form traditional VPNs.
 		
 		Although a decent part of the IPsec stack is already directly embedded into the Linux kernel, guaranteeing efficient packet processing with minimum overhead, some daemons are still required in user space, generally those regarding Security Associations.
 		
@@ -197,7 +217,7 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\subsection{Format}
 		The AH format (figure \ref{ah_header}) is quite simple, containing the following fields:
 	\begin{itemize}
-	\item Next Header (8 bits) is used to link headers together and identifies the next protocol used after AH. The value is chosen from the set of IP Protocol Numbers defined by IANA. For example, a value of 4 indicates IPv4, a value of 41 indicates IPv6, and a value of 6 indicates TCP. AH itself has the value of 41 assigned.
+	\item Next Header (8 bits) is used to link headers together and identifies the next protocol used after AH. The value is chosen from the set of IP Protocol Numbers defined by IANA. For example, a value of 4 indicates IPv4, a value of 41 indicates IPv6, and a value of 6 indicates TCP.
 	\item Payload Length (8 bits) specifies the length of AH in 32-bit words (4-byte units), minus 2. Therefore, for example,  if an integrity algorithm yields a 96-bit authentication value, this length field will be the value 4 (3 32-bit word fixed fields plus 3 32-bit words for the ICV, minus 2) \cite{rfc4302}.
 	\item Reserved (16 bits) is not currently used and it is set to zero. 
 	\item Security Parameter Index (32 bits) identifies the SA to which an incoming packet is bound.
@@ -213,7 +233,107 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\end{figure}
 		
 		\subsection{Placement}
-		AH placement depends on the IPsec mode of operation and whether IPv4 or IPv6 is used.
+		AH placement depends on the IPsec mode of operation and the IP version used (IPv4 or IPv6).
+		\subsubsection{Transport Mode}
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{ah_transport_ipv4}
+			\centering
+			\caption{In the context of IPv4, AH is placed after the IP header (and any options that it contains), but before the next layer protocol \cite{rfc4302}.}
+		\end{figure}
+		
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{ah_transport_ipv6}
+			\centering
+			\caption{In the IPv6 context, AH is viewed as an end-to-end payload, and thus should appear after hop-by-hop, routing, and fragmentation extension headers.  The destination options extension header(s) could appear before or after or both before and after the AH header depending on the semantics desired \cite{rfc4302}.}
+		\end{figure}
+		
+		\subsubsection{Tunnel Mode}
+		As previously mentioned, when employing IPsec in tunnel mode, the whole IP datagram (not just the payload) is encapsulated within another IP datagram. The inner IP header carriers the final IP source and destination addresses, while the outer IP header contains the addresses of the IPsec gateways. The latter can also contain special routing options that dictate how the packet will traverse the public network. Mixed inner and outer IP versions are allowed, i.e., IPv6 over IPv4 and IPv4 over IPv6 \cite{rfc4302}.
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{ah_tunnel_ipv4}
+			\centering
+			\caption{AH with IPv4.}
+		\end{figure}
+		
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{ah_tunnel_ipv6}
+			\centering
+			\caption{AH with IPv6.}
+		\end{figure}
+		
+		\subsection{ICV Computation}
+		The ICV is calculated over the majority, but not the entire IP datagram. Fields which are modified in transit between the two gateways must be excluded in order for the receiving IPsec peer to not mistakenly discard the packet (remember that even if a single bit is changed the ICV values will differ). An example is the time to live (TTL) field in the IPv4 header, which is decremented at each hop until the datagram reaches its destination, or until it reaches zero, in which case the datagram is discarded. With this in mind, the AH ICV is computed over the following:
+		\begin{itemize}
+			\item Everything after the AH header.
+			\item The AH header (the ICV is initially set to zero).
+			\item IP or extension headers fields before the AH header that are immutable in transit. For example, in IPv4, the DSCP, ECN, flags, fragment offset, TTL and header checksum fields are excluded.
+		\end{itemize}
+	
+		\subsection{NAT Incompatibility}
+			A considerable disadvantage of AH is that it is incompatible with Network Address Translation (NAT). As previously explained, the AH header incorporates the IP source and destination addresses in the ICV computation. If one of the IPsec gateways is inside a private network, as is usually the case, the ICV will be calculated over a private IP address. Just as the packet leaves into the public network, Network Address Translation (NAT) will inevitably modify the IP header in order for it to contain only public addresses, therefore invalidating the ICV. Although some methods to bypass NAT in case of AH packets exist \cite{rfc3715}, they are quite limited. Fortunately, integrity can also be provided by ESP. IPsec ESP tunnels do not cover the outer IP header within the message integrity check, and so will not cause problems with address translation.
+			
+		\section{Encapsulating Security Protocol}
+		\subsection{Description}
+		IPsec AH provides integrity services to IP datagrams, guaranteeing that the packets received by the IPsec peers are intact and not maliciously altered in transit. However, for most applications, this is only one small piece of the puzzle. Although potential eavesdroppers would not be able to change the intercepted IP datagrams, they still can examine their contents. This includes the authentic IP addresses of the communicating peers (present in the only IP header in transport mode, and in the inner IP header in tunnel mode), as well as the transport data, which probably contains the most valuable information in a network packet, such as HTTP data. Therefore, for perfect privacy, AH is clearly not enough. This is where IPsec ESP steps in.
+		
+		Encapsulating Security Payload (ESP) is the second core protocol of the IPsec suite, and probably the most versatile, implementing a mix of security services in IPv4 and IPv6. ESP can be used to provide confidentiality, data origin authentication, connectionless integrity, an anti-replay service, and (limited) traffic flow confidentiality \cite{rfc4303}.
+		
+		ESP can be used in conjunction with AH, the first one providing confidentiality while the latter guarantees integrity. However, since ESP can implement both services (i.e. the packets will be protected with regard to confidentiality and integrity), AH is deemed unnecessary in most situations.
+		
+		\subsection{Format}
+		ESP provides confidentiality to IP datagrams by encrypting them. To achieve this, ESP repackages the original IP datagrams using a special format. Instead of having just a header and a payload, ESP fields are divided into four components:
+		\begin{itemize}
+			\item \textbf{ESP Header.} This contains the SPI and Sequence Number fields, and comes before the encrypted data.
+			\item \textbf{ESP Payload Data.} The encrypted payload data encapsulated by ESP. Depending on the mode of operation, this could either be an upper layer message or an IP datagram. If the encryption scheme employed requires an Initialization Vector (IV), this is added at the beginning.
+			\item \textbf{ESP Trailer.} This section is placed after the encrypted data. It contains padding and two fields, Pad Length and Next Header. Padding is required in order to support encryption algorithms that require the data to be encrypted to have a certain block size. It is also used to make sure the ESP layer is a multiple of 32 bits. The Pad Length field indicates the padding size, in order for the receiver to clearly separate the original message from the padding. Next Header contains the protocol number of the next header in the encapsulated payload.
+			\item \textbf{ESP Authentication Data.} This is optional and is only present if integrity services are also employed by ESP for that particular SA. It contains the ICV calculated over the ESP header, payload and trailer. Unlike AH, this does not include the outer IP header in tunnel mode.
+		\end{itemize}
+		
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{esp_format}
+			\centering
+			\caption{ESP Fields Format.}
+		\end{figure}
+\newpage
+		\subsection{Placement}
+		\subsubsection{IPv4}
+		
+		\begin{figure}[!htb]
+			\includegraphics[width=\textwidth,height=0.15\textheight,keepaspectratio]{original_ipv4_packet}
+			\centering
+			\caption{Original IPv4 datagram with TCP as the upper layer protocol.}
+		\end{figure}
+		
+		\begin{figure}[!htb]
+			\includegraphics[width=\textwidth]{esp_ipv4_transport}
+			\centering
+			\caption{In transport mode, the ESP header is inserted after the IPv4 header and before the next layer protocol, protecting the upper layer message.}
+		\end{figure}
+		
+		\begin{figure}[!htb]
+			\includegraphics[width=\textwidth]{esp_ipv4_tunnel}
+			\centering
+			\caption{In tunnel mode, ESP encapsulates and protects the entire original IPv4 datagram.}
+		\end{figure}
+\newpage
+		\subsubsection{IPv6}
+		\begin{figure}[!htb]
+			\includegraphics[width=\textwidth,height=0.15\textheight,keepaspectratio]{original_ipv6_packet}
+			\centering
+			\caption{Original IPv6 datagram, including Routing Extension Header and Destination Options Extension Header, with TCP as the upper layer protocol.}
+		\end{figure}
+		
+		\begin{figure}[!htb]
+			\includegraphics[width=\textwidth]{esp_ipv6_transport}
+			\centering
+			\caption{In transport mode, ESP should appear after hop-by-hop, routing, and fragmentation extension headers.  Destination options extension header(s) could appear before, after, or both before and after the ESP header depending on the semantics desired \cite{rfc4303}.}
+		\end{figure}
+		
+		\begin{figure}[!htb]
+			\includegraphics[width=\textwidth]{esp_ipv6_tunnel}
+			\centering
+			\caption{In tunnel mode, ESP protects the entire original IPv6 datagram.}
+		\end{figure}
 		
 % Print bibliography
 \bibliographystyle{abbrv}

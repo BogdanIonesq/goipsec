@@ -25,6 +25,11 @@ S.~Kent.
 \newblock {IP Authentication Header}.
 \newblock RFC 4302, Dec. 2005.
 
+\bibitem{rfc4303}
+S.~Kent.
+\newblock {IP Encapsulating Security Payload (ESP)}.
+\newblock RFC 4303, Dec. 2005.
+
 \bibitem{rfc2406}
 S.~Kent and R.~Atkinson.
 \newblock {IP Encapsulating Security Payload (ESP)}.
@@ -50,6 +55,11 @@ C.~M. Lonvick and T.~Ylonen.
 C.~E. Perkins.
 \newblock {IP Encapsulation within IP}.
 \newblock RFC 2003, Oct. 1996.
+
+\bibitem{rfc3715}
+D.~B. D.~A. Ph.D. and W.~Dixon.
+\newblock {IPsec-Network Address Translation (NAT) Compatibility Requirements}.
+\newblock RFC 3715, Mar. 2004.
 
 \bibitem{rfc8446}
 E.~Rescorla.
