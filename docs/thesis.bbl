@@ -3,6 +3,7 @@
 \bibitem{junipercybercrime}
 \url{https://www.juniperresearch.com/press/press-releases/cybercrime-cost-businesses-over-2trillion-by-2019},
   2015.
+\newblock Accessed on 4 Jun. 2020.
 
 \bibitem{rfc5996}
 P.~Eronen, Y.~Nir, P.~E. Hoffman, and C.~Kaufman.
@@ -19,6 +20,7 @@ S.~Frankel and S.~Krishnan.
 D.~Kaminsky.
 \newblock {Re: Extensions for long fat networks?}
 \newblock \url{https://marc.info/?l=openssh-unix-dev&m=105554033415532}, 2003.
+\newblock Accessed on 4 Jun. 2020.
 
 \bibitem{rfc4302}
 S.~Kent.
@@ -80,6 +82,7 @@ K.~Seo and S.~Kent.
 O.~Titz.
 \newblock {Why TCP Over TCP Is A Bad Idea}.
 \newblock \url{http://sites.inka.de/bigred/devel/tcp-tcp.html}, Apr. 2001.
+\newblock Accessed on 4 Jun. 2020.
 
 \bibitem{rfc2408}
 J.~Turner, M.~J. Schertler, M.~S. Schneider, and D.~Maughan.

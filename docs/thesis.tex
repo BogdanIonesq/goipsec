@@ -42,6 +42,7 @@
 
 
 \begin{document}
+	% title page
 	\begin{titlepage}
 		\newgeometry{top=15mm}
 		\begin{center}
@@ -63,6 +64,13 @@
 	\end{titlepage}
 	\author{Bogdan Ionescu}
 	\date{\today}
+	
+	% abstract page
+	\begin{abstract}
+		This thesis aims to describe different potential security risks when using public networks, such as the Internet, as well as methods on how they can be avoided. The first chapter presents the dangers while traversing public networks and how VPNs make use of tunneling protocols to mitigate them. The second chapter takes a deep dive into the IPsec protocol suite, which is widely employed for establishing VPNs, and many other security services. 
+	\end{abstract}		
+	
+	% contents
 	\tableofcontents
 	
 	% Print acronyms page
@@ -70,8 +78,10 @@
 	\glsaddall
 	\printglossary[type=\acronymtype,nonumberlist,style=long]
 	
-	\chapter{Virtual Private Networks}
-	\section{Importance of VPNs}
+	\chapter{Introduction}
+	\section{Prerequisites}	
+	
+	\section{Security Over Networks}
 		
 	In this day and age, networking is everywhere, especially considering the exceedingly fast expansion of the Internet. The Internet, the ultimate network of networks, has radically changed our day-to-day life. Just several years ago, simple everyday habits, such as quickly searching for a piece of information on Google, online shopping, streaming your favorite songs or paying your bills with just a few clicks would have seemed possible only in a distant future. And yet here we are today, achieving even more impressive tasks, making use of all kinds of networks available within our laptops, phones, tablets and even home electronics, thanks to the IoT.
 		
@@ -119,9 +129,13 @@
 		
 		For example, IP in IP \cite{rfc2003} is a tunneling protocol which encapsulates an IP datagram within another IP datagram, as shown in figure \ref{fig:ip-in-ip_packet}. The source IP in the outer IP header will correspond to the entry point of the tunnel, while the destination IP will reveal the exit point, therefore guaranteeing that the packet will be routed to the other VPN endpoint. Except to the encapsulator decrementing the TTL field in the inner IP header, the packet payload remains unchanged during its delivery to the tunnel exit point. Once there, decapsulation takes place, removing the outer IP header and reconstructing the original packet, which will be sent to its original destination.
 		\begin{figure}[h]
+			\includegraphics[width=\textwidth,height=0.14\textheight,keepaspectratio]{original_ipv4_packet}
+			\centering
+		\end{figure}
+		\begin{figure}[h]
 			\includegraphics[width=\textwidth]{ip_in_ip}
 			\centering
-			\caption{IP in IP encapsulates the IP layer (IP header and payload) from the original packet within another IP packet. To differentiate between the two IP headers, the first one is often called the outer IP header.}
+			\caption{The original IPv4 datagram, with TCP as the upper layer protocol, and the corresponding IP in IP datagram.}
 			\label{fig:ip-in-ip_packet}
 		\end{figure}
 		
@@ -142,7 +156,7 @@
 			\item \textbf{Encapsulating Security Payload} can provide both data confidentiality and integrity, and limited traffic flow confidentiality \cite{rfc2406}
 		\end{itemize}
 		
-		IPsec has two main modes of operation which define how AH and ESP behave, namely transport mode and tunnel mode. When transport mode is used, only the IP payload is encapsulated and secured by one or both security headers. Tunnel mode encapsulates the entire IP packet to provide a secure hop between two gateways, quite similar with IP in IP. The latter is used to form traditional VPNs.
+		IPsec has two main modes of operation which define how AH and ESP behave, namely transport mode and tunnel mode. When transport mode is used, only the IP payload is encapsulated and secured by one or both security headers. When employing IPsec in tunnel mode, the whole IP datagram (not just the payload) is encapsulated within another IP datagram. The inner IP header carriers the final IP source and destination addresses, while the outer IP header contains the addresses of the IPsec gateways. The latter can also contain special routing options that dictate how the packet will traverse the public network. Moreover, mixed inner and outer IP versions are allowed, i.e., IPv6 over IPv4 and IPv4 over IPv6 \cite{rfc4302}. IPsec in tunnel mode is generally used to form traditional VPNs.
 		
 		Although a decent part of the IPsec stack is already directly embedded into the Linux kernel, guaranteeing efficient packet processing with minimum overhead, some daemons are still required in user space, generally those regarding Security Associations.
 		
@@ -232,34 +246,48 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 			\label{ah_header}
 		\end{figure}
 		
+		\newpage
 		\subsection{Placement}
 		AH placement depends on the IPsec mode of operation and the IP version used (IPv4 or IPv6).
-		\subsubsection{Transport Mode}
+		\subsubsection{IPv4}
 		\begin{figure}[h]
-			\includegraphics[width=\textwidth]{ah_transport_ipv4}
+			\includegraphics[width=\textwidth,height=0.14\textheight,keepaspectratio]{original_ipv4_packet}
 			\centering
-			\caption{In the context of IPv4, AH is placed after the IP header (and any options that it contains), but before the next layer protocol \cite{rfc4302}.}
+			\caption{Original IPv4 datagram.}
 		\end{figure}
 		
 		\begin{figure}[h]
-			\includegraphics[width=\textwidth]{ah_transport_ipv6}
+			\includegraphics[width=\textwidth]{ah_ipv4_transport}
 			\centering
-			\caption{In the IPv6 context, AH is viewed as an end-to-end payload, and thus should appear after hop-by-hop, routing, and fragmentation extension headers.  The destination options extension header(s) could appear before or after or both before and after the AH header depending on the semantics desired \cite{rfc4302}.}
+			\caption{In transport mode, AH is placed after the IPv4 header (and any options that it contains), but before the next layer protocol \cite{rfc4302}.}
 		\end{figure}
 		
-		\subsubsection{Tunnel Mode}
-		As previously mentioned, when employing IPsec in tunnel mode, the whole IP datagram (not just the payload) is encapsulated within another IP datagram. The inner IP header carriers the final IP source and destination addresses, while the outer IP header contains the addresses of the IPsec gateways. The latter can also contain special routing options that dictate how the packet will traverse the public network. Mixed inner and outer IP versions are allowed, i.e., IPv6 over IPv4 and IPv4 over IPv6 \cite{rfc4302}.
-		\begin{figure}[h]
-			\includegraphics[width=\textwidth]{ah_tunnel_ipv4}
+		\begin{figure}[!h]
+			\includegraphics[width=\textwidth]{ah_ipv4_tunnel}
 			\centering
-			\caption{AH with IPv4.}
+			\caption{In tunnel mode, the whole IPv4 datagram is encapsulated.}
+		\end{figure}
+		
+		\newpage
+		\subsubsection{IPv6}
+		\begin{figure}[!h]
+			\includegraphics[width=\textwidth]{original_ipv6_packet}
+			\centering
+			\caption{Original IPv6 datagram, including Routing Extension Header and Destination Options Extension Header, with TCP as the upper layer protocol.}
 		\end{figure}
 		
 		\begin{figure}[h]
-			\includegraphics[width=\textwidth]{ah_tunnel_ipv6}
+			\includegraphics[width=\textwidth]{ah_ipv6_transport}
 			\centering
-			\caption{AH with IPv6.}
+			\caption{In the transport mode, AH is viewed as an end-to-end payload, and thus should appear after hop-by-hop, routing, and fragmentation extension headers.  The destination options extension header(s) could appear before or after or both before and after the AH header depending on the semantics desired \cite{rfc4302}.}
 		\end{figure}
+		
+		\begin{figure}[!h]
+			\includegraphics[width=\textwidth]{ah_ipv6_tunnel}
+			\centering
+			\caption{AH in tunnel mode.}
+		\end{figure}
+	
 		
 		\subsection{ICV Computation}
 		The ICV is calculated over the majority, but not the entire IP datagram. Fields which are modified in transit between the two gateways must be excluded in order for the receiving IPsec peer to not mistakenly discard the packet (remember that even if a single bit is changed the ICV values will differ). An example is the time to live (TTL) field in the IPv4 header, which is decremented at each hop until the datagram reaches its destination, or until it reaches zero, in which case the datagram is discarded. With this in mind, the AH ICV is computed over the following:
@@ -294,17 +322,18 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 			\centering
 			\caption{ESP Fields Format.}
 		\end{figure}
-\newpage
+		
+		\newpage
 		\subsection{Placement}
 		\subsubsection{IPv4}
 		
-		\begin{figure}[!htb]
+		\begin{figure}[h]
 			\includegraphics[width=\textwidth,height=0.15\textheight,keepaspectratio]{original_ipv4_packet}
 			\centering
 			\caption{Original IPv4 datagram with TCP as the upper layer protocol.}
 		\end{figure}
 		
-		\begin{figure}[!htb]
+		\begin{figure}[h]
 			\includegraphics[width=\textwidth]{esp_ipv4_transport}
 			\centering
 			\caption{In transport mode, the ESP header is inserted after the IPv4 header and before the next layer protocol, protecting the upper layer message.}
@@ -334,6 +363,31 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 			\centering
 			\caption{In tunnel mode, ESP protects the entire original IPv6 datagram.}
 		\end{figure}
+	\newpage
+		\subsection{NAT Traversal}
+		ESP has its own incompatibility issues with NAT, although not quite as serious as AH. Aside from changing the private IP address with a public one, NAT also changes the TCP/UDP source port. This mapping between the real source port and the NAT assigned port is used to correctly identify the recipient when a response packet is processed. However, as previously illustrated, ESP packets do not have TCP/UDP port numbers. A NAT device (and any other node until the receiving IPsec peer) can only examine the outer IP header and the ESP header -- everything after that is encrypted (except for the ESP Authentication Data, if present).
+		
+		Fortunately, unlike AH, this issue can be easily resolved by adding an UDP header between the outer IP header and the ESP header. This technique, which is also used by IKE, is called IPsec NAT Traversal and has the UDP port 4500 assigned.
+		
+		\chapter{GoIPsec}
+		\section{Motivation}
+		As previously described in the first chapters, the two core IPsec protocols (AH and ESP) are directly implemented in the kernel, with the key management (ISAKMP/IKE) application running as a daemon running in user space. While this approach guarantees maximum packet processing speed and minimum overhead, it offers quite limited flexibility. For example, if a user wanted to change the next header field (automatically set to 50 for ESP) in the outer IP header, possibly because of a firewall that does not allow ESP packets, this would require changing and recompiling the kernel, which could turn out to be not an easy task, depending on the operating system used.
+		
+		GoIPsec is an application which demonstrates a partial implementation of the IPsec protocol suite at software level, able to act as a VPN, offering confidentiality and integrity to network packets between two devices. Its design can be further used as a blueprint for many application architectures, such as VPNs with specific security requirements, custom made network protocols or deep packet inspection firewalls.
+		
+		\section{Architecture}
+		GoIPsec was developed from the standpoint of a casual user wishing to secure network traffic when accessing different servers through the Internet, as shown in figure \ref{topology}. In order to do so, two GoIPsec gateways are needed -- one client-side and another one server-side. The client will use the first one as a proxy, which will apply security services to network packets, such as encryption. These packets will be then routed through the public network to the server-side gateway, responsible with decrypting the packets and forwarding them to the corresponding server. The server's response will be then received by the server-side gateway, and the roles are interchanged (i.e. the server-side gateway encrypts packets and the client-side decrypts them).
+		
+		In this architecture, the network packets are secured between the two gateways. Moreover, if someone were to intercept traffic between the server-side gateway and one of the servers, its origin would point to gateway, not to the actual client. Packets are vulnerable only between the client and the client-side gateway, which is why these two should be directly linked, preferably through an Ethernet cable (remember that radio waves, such as those used by Wi-Fi, can easily be hijacked). Therefore, the client-side gateway could be something small and portable, such as a Raspberry Pi device, while the server-side could be hosted in the cloud, possibly in another region in order to bypass geo-blocking.
+		\begin{figure}[h]
+			\includegraphics[width=\textwidth]{goipsec_setup}
+			\centering
+			\caption{GoIPsec network topology.}
+			\label{topology}
+		\end{figure}
+		
+		\section{Technologies}
+		As its name suggests, GoIPsec is written in Go, an open source programming language developed at Google by Robert Griesemer, Rob Pike, and Ken Thompson. I personally find it very clean and concise, and really enjoyable for writing any kind of applications. It has a lot of similarity with C, on which it was partly based, along with many improvements, such as structural typing, garbage collection and an excellent concurrency system, while still being one of the fastest programming languages. In addition to this, Go has an exceptional standard library, with packages for cryptography, networking, image processing, encoding and many more.
 		
 % Print bibliography
 \bibliographystyle{abbrv}
