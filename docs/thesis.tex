@@ -7,6 +7,28 @@
 	\usepackage{geometry}
 	\usepackage[acronym]{glossaries}
 	\graphicspath{{figures/}}
+	\usepackage{listings}
+	\usepackage{color}
+	\usepackage{xcolor}
+	\usepackage{caption}
+	\usepackage{setspace}
+	
+\newcommand{\quotes}[1]{``#1''}
+	
+% define listings style
+\lstset{frame=bottomline,
+   %aboveskip=3mm,
+   %belowskip=3mm,
+   showstringspaces=false,
+   columns=flexible,
+   basicstyle={\ttfamily},
+   numbers=none,
+   tabsize=4
+}
+\DeclareCaptionFont{white}{\color{white}}
+\DeclareCaptionFormat{listing}{\colorbox{gray}{\parbox{\textwidth}{#1#2#3}}}
+\captionsetup[lstlisting]{format=listing,labelfont=white,textfont=white, singlelinecheck=false, margin=0pt, font={bf,footnotesize}}
+
 	
 % Acronyms page
 \makeglossaries
@@ -388,6 +410,64 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		
 		\section{Technologies}
 		As its name suggests, GoIPsec is written in Go, an open source programming language developed at Google by Robert Griesemer, Rob Pike, and Ken Thompson. I personally find it very clean and concise, and really enjoyable for writing any kind of applications. It has a lot of similarity with C, on which it was partly based, along with many improvements, such as structural typing, garbage collection and an excellent concurrency system, while still being one of the fastest programming languages. In addition to this, Go has an exceptional standard library, with packages for cryptography, networking, image processing, encoding and many more.
+		
+		The major package used in developing GoIPsec is represented by gopacket, a third-party library also developed by Google, which provides network packet decoding, as well as building network packets from the ground up, supporting many protocols. It also integrates libpcap, a portable C/C\texttt{++} library for network traffic capture.
+		
+		Docker, a popular virtualization platform that uses containers to deliver isolated software applications is also used for building a local testing environment, in conjunction with Docker Compose.
+		
+		\section{Set-Up}
+		Configuration in mainly necessary on the two gateways. Once Go\footnote{Available for any distribution at \url{https://golang.org/dl/}} and libpcap\footnote{Available at \url{https://www.tcpdump.org/}} are installed, GoIPsec, which is an open source project currently hosted on GitHub\footnote{Available at \url{https://github.com/BogdanIonesq/goipsec}} can be easily installed using Go utilities:
+		\begin{lstlisting}[caption=Installing GoIPsec.]
+$ go get github.com/BogdanIonesq/goipsec
+		\end{lstlisting}
+		gopacket can be installed in the same fashion:
+		\begin{lstlisting}[caption=Installing gopacket library.]
+$ go get github.com/google/gopacket
+		\end{lstlisting}
+		GoIPsec requires only one configuration file, in JSON format, which must be named \texttt{goipsec.json} and placed in the user-specific configuration data directory. On Unix systems, this usually is \texttt{\$HOME/.config}, unless \texttt{\$XDG\_CONFIG\_HOME} is set. An example and more information about the fields can be found below:
+				\begin{lstlisting}[caption=Example of GoIPsec client-side configuration file.]
+{
+	"Type": "client",
+	"ClientIPv4Addr": "173.17.17.10",
+	"ClientIPv6Addr": "2001:db8:23:42:1::10",
+	"ClientMAC": "02:42:ac:11:00:10",
+	"NodeIPv4Addr": "173.17.17.20",
+	"NodeIPv6Addr": "2001:db8:23:42:1::20",
+	"NodeMAC": "02:42:ac:11:00:20",
+	"NextHopMAC": "02:42:ac:11:00:99",
+	"NextGatewayIPv6Addr": "2001:db8:23:42:1::30"
+}
+		\end{lstlisting}
+		\begin{itemize}
+		\item \textbf{Type.} Specifies if the gateway should behave client-side or server-side. Can only be set to \quotes{client} or \quotes{server}.
+		\item \textbf{ClientIPv4Addr.} Client's IPv4 address (required only client-side).
+		\item \textbf{ClientIPv6Addr.} Client's IPv6 address (required only client-side).
+		\item \textbf{ClientMAC.} Client's MAC address (required only client-side).
+		\item \textbf{NodeIPv4Addr.} Current device's IPv4 address.
+		\item \textbf{NodeIPv6Addr.} Current device's IPv6 address.
+		\item \textbf{NodeMAC.} Current device's MAC address.
+		\item \textbf{NextHopMAC.} MAC address of the next device when routing packets. Can be found with the \texttt{ip neighbor} command.
+		\item \textbf{NextGatewayIPv6Addr.} IPv6 address of the other GoIPsec gateway.
+		\end{itemize}
+		
+		In order to provide confidentiality and integrity services, a cryptographic key shared by the two gateways is needed. GoIPsec retrieves it from the \texttt{GOIPSEC\_KEY} environment variable, which therefore must be set and must have a length of exactly 32 bytes. A quick and simple method to safely generate a random set of 32 characters (which equals 32 bytes) and assign it to the corresponding environment variable is the following:
+		\begin{lstlisting}[caption=Randomly generate \texttt{GOIPSEC\_KEY}.]
+$ export GOIPSEC_KEY=\
+	$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32)
+		\end{lstlisting}
+		Finally, to compile and run GoIPsec, navigate to the \texttt{cmd/goipsec/} directory and run \texttt{main.go}:
+		\begin{lstlisting}[caption=Compile and run GoIPsec.]
+$ cd cmd/goipsec/
+$ go run main.go
+		\end{lstlisting}
+		Once the two GoIPsec gateways are up and running, all the client needs to to is to route some or all of his traffic through the client-side gateway in order for it to be secured. This is done with the help of the \texttt{ip} command.
+				\begin{lstlisting}[caption=Route IPv6 traffic destined for \texttt{2001:db8:23:42:1::40} through the GoIPsec gateway available at \texttt{2001:db8:23:42:1::20}.]
+$ ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20
+		\end{lstlisting}
+		
+			\begin{lstlisting}[caption=Route all IPv4 traffic through the GoIPsec gateway with address \texttt{173.17.17.99}.]
+$ ip route add default via 173.17.17.99
+		\end{lstlisting}
 		
 % Print bibliography
 \bibliographystyle{abbrv}
