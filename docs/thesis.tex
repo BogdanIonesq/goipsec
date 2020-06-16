@@ -12,8 +12,10 @@
 	\usepackage{xcolor}
 	\usepackage{caption}
 	\usepackage{setspace}
-	
+
+\doublespacing
 \newcommand{\quotes}[1]{``#1''}
+\renewcommand{\glsgroupskip}{}
 	
 % define listings style
 \lstset{frame=bottomline,
@@ -46,7 +48,6 @@
 \newacronym{osi}{OSI}{Open Systems Interconnection}
 \newacronym{dtls}{DTLS}{Datagram Transport Layer Security}
 \newacronym{mipv6}{MIPv6}{Mobile IPv6}
-\newacronym{ietf}{IETF}{Internet Engineering Task Force}
 \newacronym{sa}{SA}{Security Association}
 \newacronym{esp}{ESP}{Encapsulating Security Payload}
 \newacronym{ah}{AH}{Authentication Header}
@@ -60,6 +61,8 @@
 \newacronym{iana}{IANA}{Internet Assigned Numbers Authority}
 \newacronym{nat}{NAT}{Network Address Translation}
 \newacronym{iv}{IV}{Initialization Vector}
+\newacronym{aes}{AES}{Advanced Encryption Standard}
+\newacronym{hmac}{HMAC}{Keyed-Hash Message Authentication Code}
 
 
 
@@ -72,15 +75,16 @@
 			{\LARGE University of Bucharest \\
 			Faculty of Mathematics and Computer Science }
 			\vfill
+			{\large Bachelor's Thesis} \\
+			\vspace{10mm}
 			\textbf{\huge Virtual Private Networks} \\
-			\vspace{5mm}
 			{\Large Bogdan Ionescu} \\
 			\vspace{20mm}
 			\begin{flushleft}{\large Supervisor \\
 			Lect. Dr. Eng. Paul Irofti}
 			\end{flushleft}
 			\vfill
-			\today
+			June, 2020
 		\restoregeometry
 		\end{center}
 	\end{titlepage}
@@ -89,7 +93,7 @@
 	
 	% abstract page
 	\begin{abstract}
-		This thesis aims to describe different potential security risks when using public networks, such as the Internet, as well as methods on how they can be avoided. The first chapter presents the dangers while traversing public networks and how VPNs make use of tunneling protocols to mitigate them. The second chapter takes a deep dive into the IPsec protocol suite, which is widely employed for establishing VPNs, and many other security services. 
+		This thesis aims to describe different potential security vulnerabilities when using public networks, such as the Internet, as well as suitable methods on how they can be resolved. The first chapter presents the dangers one might encounter while traversing public networks and how VPNs make use of tunneling protocols to mitigate them. We then take a deep dive into IPsec, a very popular and adaptable network protocol suite designed to address a plethora of security needs for both casual users and businesses. Finally, a software application written in the Go programming language is outlined, with the purpose of demonstrating how securing network traffic would be implemented.
 	\end{abstract}		
 	
 	% contents
@@ -98,10 +102,9 @@
 	% Print acronyms page
 	\setlength{\glsdescwidth}{\hsize}
 	\glsaddall
-	\printglossary[type=\acronymtype,nonumberlist,style=long]
+	\printglossary[type=\acronymtype,nonumberlist]
 	
 	\chapter{Introduction}
-	\section{Prerequisites}	
 	
 	\section{Security Over Networks}
 		
@@ -115,7 +118,7 @@
 		
 		Even if such encryption is used, with strong cryptographic ciphers, unlikely to be broken in attacks, we still might experience some troubles. Application data that leaves our home network, in order to be routed over networks, will have an \acrfull{ip} header added to it, which contains our public IP address and the destination IP address. These are unique, ISP-issued addresses which can be used to monitor and censor traffic, since every service we try to access will be identified by its IP address. This could also lead to IP address-based geo-blocking and IP range ban, methods often employed by media companies, governments, intelligence agencies and many others.
 		
-		So far we have only talked about the consequences from the point of view of a casual user, but damages rise significantly in the case of cyber attacks against major businesses, usually leading to huge amounts of loss in revenue. In fact, Juniper Research estimated that the average cost of a data breach in 2020 will exceed \$150 million, as more business infrastructure gets connected \cite{junipercybercrime}. In order to mitigate cyber attacks, they usually maintain one or more private networks inside their offices and only from within these controlled networks employees can access necessary resources. Such resources can actually be part of the same network, thus making transfer of data safe, since everything happens inside the private network, but inevitably some resources, such as cloud services, will be accessed through the Internet. Some employees must also be able to connect to the private network through the Internet even if they are part of another network, in order to access its resources, possibly in case of time-critical emergencies or just to work remotely from their homes. Therefore, many companies need a technology that allows secure communication between their private network and another host across a public network, or even to another different private network, such as communication between two private networks owned by different offices of the same company, located in distant regions.
+		So far we have only talked about the consequences from the point of view of a casual user, but damages rise significantly in the case of cyber attacks against major businesses, usually leading to huge amounts of loss in revenue. In fact, Juniper Research estimated that the average cost of a data breach in 2020 will exceed \$150 million, as more business infrastructure gets connected \cite{juniper}. In order to mitigate cyber attacks, they usually maintain one or more private networks inside their offices and only from within these controlled networks employees can access necessary resources. Such resources can actually be part of the same network, thus making transfer of data safe, since everything happens inside the private network, but inevitably some resources, such as cloud services, will be accessed through the Internet. Some employees must also be able to connect to the private network through the Internet even if they are part of another network, in order to access its resources, possibly in case of time-critical emergencies or just to work remotely from their homes. Therefore, many companies need a technology that allows secure communication between their private network and another host across a public network, or even to another different private network, such as communication between two private networks owned by different offices of the same company, located in distant regions.
 		
 		The solution to all the aforementioned problems, and to many other vulnerabilities while using a public network, is a \acrfull{vpn}.
 		
@@ -149,7 +152,7 @@
 		\section{Tunneling Protocols}
 		The two endpoints of a VPN tunnel do most of the work, being responsible with managing the tunnel and making sure that communication through it is possible. In order for it to actually function, they must modify the regular network packets received from the clients, making sure they are routed to the other endpoint, not to their actual destination, and also provide encryption, if desired. From an original network packet only important information is kept, usually either the network or the transport layer, discarding other layers. This fragment is often called the payload packet, because it is then used as a payload for the final packet. If encryption is used, some portion or the entire payload packet can be modified. This process of encapsulating a packet inside another packet is called \textit{tunneling}, achieved by \textit{tunneling protocols}.
 		
-		For example, IP in IP \cite{rfc2003} is a tunneling protocol which encapsulates an IP datagram within another IP datagram, as shown in figure \ref{fig:ip-in-ip_packet}. The source IP in the outer IP header will correspond to the entry point of the tunnel, while the destination IP will reveal the exit point, therefore guaranteeing that the packet will be routed to the other VPN endpoint. Except to the encapsulator decrementing the TTL field in the inner IP header, the packet payload remains unchanged during its delivery to the tunnel exit point. Once there, decapsulation takes place, removing the outer IP header and reconstructing the original packet, which will be sent to its original destination.
+		For example, IP in IP is a tunneling protocol which encapsulates an IP datagram within another IP datagram, as shown in figure \ref{fig:ip-in-ip_packet}. The source IP in the outer IP header will correspond to the entry point of the tunnel, while the destination IP will reveal the exit point, therefore guaranteeing that the packet will be routed to the other VPN endpoint. Except to the encapsulator decrementing the TTL field in the inner IP header, the packet payload remains unchanged during its delivery to the tunnel exit point. Once there, decapsulation takes place, removing the outer IP header and reconstructing the original packet, which will be sent to its original destination.
 		\begin{figure}[h]
 			\includegraphics[width=\textwidth,height=0.14\textheight,keepaspectratio]{original_ipv4_packet}
 			\centering
@@ -161,9 +164,9 @@
 			\label{fig:ip-in-ip_packet}
 		\end{figure}
 		
-		\acrfull{gre} \cite{rfc2784}, a protocol fairly similar to IP in IP, developed by Cisco Systems, and Layer 2 Tunneling Protocol (L2TP) \cite{rfc2661} are just another two examples of tunneling protocols frequently used. However, just like IP in IP, all of these protocols do not provide any confidentiality or integrity. They just encapsulate the data received, without modifying it in order to provide encryption. To achieve this, they generally rely on other protocols.
+		\acrfull{gre}, a protocol fairly similar to IP in IP, developed by Cisco Systems, and Layer 2 Tunneling Protocol (L2TP) are just another two examples of tunneling protocols frequently used. However, just like IP in IP, all of these protocols do not provide any confidentiality or integrity. They just encapsulate the data received, without modifying it in order to provide encryption. To achieve this, they generally rely on other protocols.
 		
-		Internet Protocol Security (IPsec) \cite{rfc6071}, Transport Layer Security (TLS) \cite{rfc8446} and Secure Shell (SSH) \cite{rfc4253} are the most often used protocols for secure network services over an insecure network. A key difference between these three protocols is the OSI layer at which they operate. While IPsec is generally considered a network layer protocol, TLS and SSH depend on a reliable stream of bytes and are therefore implemented over TCP, making them layer 5 or above, or just application layer protocols in the TCP/IP suite. The fact that IPsec performs at a lower layer than the rest and it is not dependent on TCP increases its flexibility and capabilities, being able to secure any transport layer protocol, such as UDP. Datagram Transport Layer Security (DTLS) \cite{rfc6347} was also developed to implement TLS over UDP. Tunneling over UDP is sometimes preferred to avoid the TCP meltdown problem (also known as TCP over TCP), in which tunneling a TCP-encapsulating payload induces a dramatic loss in transmission performance (even up to 20\%)\cite{tcpmeltdown}. OpenSSH, an open source suite of secure networking utilities based on SSH avoids the meltdown by decapsulating and re-encapsulating TCP, only sending the payload through the tunnel \cite{opensshmeltdown}.
+		Internet Protocol Security (IPsec), Transport Layer Security (TLS) and Secure Shell (SSH) are the most often used protocols for secure network services over an insecure network. A key difference between these three protocols is the OSI layer at which they operate. While IPsec is generally considered a network layer protocol, TLS and SSH depend on a reliable stream of bytes and are therefore implemented over TCP, making them layer 5 or above, or just application layer protocols in the TCP/IP suite. The fact that IPsec performs at a lower layer than the rest and it is not dependent on TCP increases its flexibility and capabilities, being able to secure any transport layer protocol, such as UDP. Datagram Transport Layer Security (DTLS) was also developed to implement TLS over UDP. Tunneling over UDP is sometimes preferred to avoid the TCP meltdown problem (also known as TCP over TCP), in which tunneling a TCP-encapsulating payload induces a dramatic loss in transmission performance (even up to 20\%)\cite{tcpmeltdown}. OpenSSH, an open source suite of secure networking utilities based on SSH avoids the meltdown by decapsulating and re-encapsulating TCP, only sending the payload through the tunnel \cite{opensshmeltdown}.
 		
 		IPsec, TLS and SSH use a wide variety of strong cryptographic algorithms, providing robust authentication, confidentiality and integrity, amongst many other services. All three of them support tunneling and are currently used to establish and maintain secure tunnels across many networks worldwide. However, the more complex IPsec is still the most viable and preferred option for tunneling, especially for site-to-site VPNs, while TLS and SSH are better for secure remote access, being more straightforward and easier to set up.
 		
@@ -415,7 +418,7 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		
 		Docker, a popular virtualization platform that uses containers to deliver isolated software applications is also used for building a local testing environment, in conjunction with Docker Compose.
 		
-		\section{Set-Up}
+		\section{Setup}
 		Configuration in mainly necessary on the two gateways. Once Go\footnote{Available for any distribution at \url{https://golang.org/dl/}} and libpcap\footnote{Available at \url{https://www.tcpdump.org/}} are installed, GoIPsec, which is an open source project currently hosted on GitHub\footnote{Available at \url{https://github.com/BogdanIonesq/goipsec}} can be easily installed using Go utilities:
 		\begin{lstlisting}[caption=Installing GoIPsec.]
 $ go get github.com/BogdanIonesq/goipsec
@@ -464,11 +467,46 @@ $ go run main.go
 				\begin{lstlisting}[caption=Route IPv6 traffic destined for \texttt{2001:db8:23:42:1::40} through the GoIPsec gateway available at \texttt{2001:db8:23:42:1::20}.]
 $ ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20
 		\end{lstlisting}
-		
+\newpage
 			\begin{lstlisting}[caption=Route all IPv4 traffic through the GoIPsec gateway with address \texttt{173.17.17.99}.]
 $ ip route add default via 173.17.17.99
 		\end{lstlisting}
 		
+		However, if a user does not have access to another two servers on which to run GoIPsec, or wishes to use GoIPsec for testing or educational purposes, the Docker setup if more than enough. This resides in the \texttt{deployments/} folder, where the \texttt{docker-compose.yml} file describes the multi-container platform administrated by Docker Compose. In addition, the \texttt{dockerfiles/} folder contains the setup for each one of the containers, while the \texttt{logs/} directory contains the network traffic dump files associated.
+		
+		In order to use the Docker setup, after installing Docker and Docker Compose, support for IPv6 must also be enabled by setting the \texttt{ipv6} key to \texttt{true} in \texttt{/etc/docker/daemon.json}, followed by reloading the configuration file:
+		\begin{lstlisting}[caption=Contents of \texttt{/etc/docker.daemon.json} in order for Docker to have IPv6 capabilities.]
+{
+  "ipv6": true
+}
+		\end{lstlisting}
+				\begin{lstlisting}[caption=Reload Docker configuration file., language=bash]
+$ systemctl reload docker
+		\end{lstlisting}
+		After modifying the volume paths in the \texttt{docker-compose.yml} file, the Docker Compose platform is ready to run:
+		\begin{lstlisting}[caption=Run Docker Compose setup.]
+$ cd deployments/
+$ docker-compose up
+		\end{lstlisting}
+		
+		\section{Workflow}
+		The steps GoIPsec implements in order to secure a given network packet from the client to one of the server are as follows:
+		\begin{enumerate}
+		\item At launch, GoIPsec first checks the \texttt{goipsec.json} configuration file. If no errors occur, the information is saved in a structure, being vital for the next steps. The environment variable \texttt{GOIPSEC\_KEY} is also verified, confirming that it is set and has a length of exactly 32 bytes.
+		\item The GoIPsec gateway starts listening for specific network traffic, depending on the type defined in the configuration. A client-side gateway will capture TCP and UDP traffic from the client, and UDP packets with destination port 4500 from the other GoIPsec gateway. A server-side gateway will capture all TCP and UDP traffic, deciding later if a particular network packet is secured by another GoIPsec device or if it is a response from one of the servers.
+		\item When the client-side gateway receives an IP datagram from the client, GoIPsec secures it by following ESP specifications. Firstly, an ESP header and trailer are added. Secondly, everything except the ESP header is encrypted with AES-256 in CBC mode using \texttt{GOIPSEC\_KEY} as the cipher key. Then, integrity is assured by adding authentication data at the end, computed with HMAC-SHA512/256. All of this is UDP encapsulated with destination port 4500, then IPv6 encapsulated. The IPv6 destination address is the one of the server-side gateway, guaranteeing that the packet is routed to it.
+		\item When the server-side gateway receives this packet, it computes its own ICV using the same algorithm and key, and compares it with the ESP Authentication Data. If the values differ, the packet is discarded. Otherwise, the ESP Payload Data is decrypted, obtaining the original IP datagram from the client. This is also slightly modified, changing the source IP address with that of the gateway and recalculating the checksum accordingly.
+		\item If the server-side gateway receives a response from a server, the roles are interchanged, meaning the server-side GoIPsec device will encrypt the packet, then the client-side gateway will decrypt it and forward it to the client.
+		\end{enumerate}
+		
+		Following Go programming conventions, all of these functions are available as packages, located in the \texttt{pkg/} directory. Gateway is the main package, providing necessary configuration, encryption and decryption, while others have miscellaneous purposes, such as checksum calculation for UDP and TCP, and logging mechanisms.
+		
+		\chapter{Conclusion}
+		Using the Internet, or any other public network, does not come without accountability for potential security threats. Unfortunately, because of the outstanding growth of such networks, in both number of users and amount of data available, one must take additional precautions and efforts in order to achieve security.
+		
+		Systems specifically built for these purposes already exist, especially in the form of network protocols, which adapt to almost any security needs. Such effective solutions are usually composed of many working parts, and their complexity can sometimes baffle inexperienced users. However, a closer look proves that every piece has its own crucial function, adding support for any requirement.
+		
+		Many solutions also exist from a programming point of view, allowing those with such knowledge to implement their own applications. Nevertheless, new security vulnerabilities and attack are discovered each day, and therefore both sides must remain vigilant and informed. 
 % Print bibliography
 \bibliographystyle{abbrv}
 \bibliography{bibliography}
