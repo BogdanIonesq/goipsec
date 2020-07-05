@@ -6,8 +6,8 @@ services:
     build:
       context: ./dockerfiles
       dockerfile: client
-    image: goipsec-tcp-client
-    container_name: goipsec-tcp-client
+    image: goipsec-udp-client
+    container_name: goipsec-udp-client
     mac_address: "02:42:ac:11:00:10"
     stop_grace_period: 10s
     cap_add:
@@ -15,14 +15,13 @@ services:
     depends_on:
       - goipsec-client
     volumes:
-      - /home/bogdan/.go/src/goipsec/deployments/logs/tcp/client.pcap:/client.pcap
+      - /home/bogdan/.go/src/goipsec/deployments/logs/udp/client.pcap:/client.pcap
     command: bash -c '(tcpdump -w /client.pcap &) &&
-      ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20 &&
+      ip route add 173.17.17.40/32 via 173.17.17.20 &&
+      ip route show &&
       sleep 5 &&
-      curl goipsec-tcp-server --local-port 5555 -s -m 5 -6 -w %{time_total}; sleep 20'
-#    command: bash -c '(tcpdump -w /client.pcap &) &&
-#                       sleep 5 &&
-#                       curl web-server --local-port 6666 -s -m 5 -6; sleep 10'
+      (echo "hello" | nc -p 5555 -u 173.17.17.40 9999 -w 1) &&
+      sleep 20'
     networks:
       default:
         ipv4_address: "173.17.17.10"
@@ -48,8 +47,8 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/tcp/client-gateway.pcap &) &&
-      ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
+    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/udp/client-gateway.pcap &) &&
+      iptables -I FORWARD -p udp --dport 9999 -s 173.17.17.10 -j DROP &&
       ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP && 
       /go/src/goipsec/cmd/goipsec/main'
     networks:
@@ -78,8 +77,7 @@ services:
       ip route add default via 173.17.17.99 &&
       ip -6 route del default &&
       ip -6 route add default via 2001:db8:23:42:1::99 &&
-      (tcpdump -w /go/src/goipsec/deployments/logs/tcp/server-gateway.pcap &) &&
-      ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
+      (tcpdump -w /go/src/goipsec/deployments/logs/udp/server-gateway.pcap &) &&
       ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP &&
       rm -f /go/src/goipsec/cmd/goipsec/main &&
       cd /go/src/goipsec/cmd/goipsec/ &&
@@ -99,17 +97,20 @@ services:
     build:
       context: ./dockerfiles
       dockerfile: server
-    image: goipsec-tcp-server
-    container_name: goipsec-tcp-server
+    image: goipsec-udp-server
+    container_name: goipsec-udp-server
     mac_address: "02:42:ac:11:00:40"
     stop_grace_period: 10s
+    expose:
+      - "9999"
     depends_on:
       - router
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec/deployments/logs/tcp/server.pcap:/server.pcap
-    command: sh -c 'nginx && tcpdump -w /server.pcap'
+      - /home/bogdan/.go/src/goipsec/deployments/logs/udp/server.pcap:/server.pcap
+    command: bash -c '(tcpdump -w /server.pcap &) &&
+      nc -ul 9999'
     networks:
       default:
         ipv4_address: "173.17.17.40"

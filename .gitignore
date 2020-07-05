@@ -1,5 +1,5 @@
 .idea/
-cmd/ipsec/main
+cmd/goipsec/main
 deployments/logs/client.pcap
 deployments/logs/vpn-gateway.pcap
 deployments/logs/vpn-server.pcap

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"goipsec/pkg/csum"
 	"goipsec/pkg/glog"
 	"net"
 	"os"
@@ -56,11 +55,11 @@ func (g *gateway) DecryptPacket(packet gopacket.Packet, send chan gopacket.Seria
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(payload, payload)
 
-	// separate the original datagram and the esp trailer fields
+	// extract trailer fields
 	nextHeader := int(payload[len(payload)-1])
 	padLength := int(payload[len(payload)-2])
-	originalDatagram := payload[:len(payload)-2-padLength]
 
+	// compute MACs based on the type of gateway
 	var srcMAC, dstMAC net.HardwareAddr
 	if g.config.Type == "client" {
 		srcMAC, _ = net.ParseMAC(g.config.NodeMAC)
@@ -72,87 +71,176 @@ func (g *gateway) DecryptPacket(packet gopacket.Packet, send chan gopacket.Seria
 
 	// spoofed IPs, transport protocol number, checksum and final packet to be forwarded
 	var srcIP, dstIP net.IP
-	var transportProto int
-	var cs uint16
-	forgedPacket := gopacket.NewSerializeBuffer()
+	//var transportProto int
+	//var cs uint16
+	newPacket := gopacket.NewSerializeBuffer()
 
 	if nextHeader == int(layers.IPProtocolIPv4) {
+		// encapsulated payload packet begins with IPv4 header
+		payloadPacket := gopacket.NewPacket(payload[:len(payload)-2-padLength], layers.LayerTypeIPv4, gopacket.Default)
+
+		ipLayer := payloadPacket.Layer(layers.LayerTypeIPv4).(*layers.IPv4)
+
 		if g.config.Type == "client" {
-			srcIP = originalDatagram[12:16]
+			srcIP = ipLayer.SrcIP
 			dstIP = net.ParseIP(g.config.ClientIPv4Addr)
 		} else {
 			srcIP = net.ParseIP(g.config.NodeIPv4Addr)
-			dstIP = originalDatagram[16:20]
+			dstIP = ipLayer.DstIP
 		}
 
-		transportProto = int(originalDatagram[9])
-		if transportProto == 6 {
-			cs = csum.TCPIPv4(srcIP, dstIP, originalDatagram[ipv4HeaderLength:])
+		// build the final packet depending on the transport layer
+		if udp := payloadPacket.Layer(layers.LayerTypeUDP); udp != nil {
+			// UDP as the transport layer
+			ipLayer := &layers.IPv4{
+				Version:    ipLayer.Version,
+				IHL:        ipLayer.IHL,
+				TOS:        ipLayer.TOS,
+				Length:     ipLayer.Length,
+				Id:         ipLayer.Id,
+				Flags:      ipLayer.Flags,
+				FragOffset: ipLayer.FragOffset,
+				TTL:        64,
+				Protocol:   ipLayer.Protocol,
+				Checksum:   0,
+				SrcIP:      srcIP,
+				DstIP:      dstIP,
+				Options:    nil,
+				Padding:    nil,
+			}
 
-			originalDatagram[ipv4HeaderLength+16] = byte(cs >> 8)
-			originalDatagram[ipv4HeaderLength+17] = byte(cs)
-		} else if transportProto == 17 {
-			cs = csum.UDPIPv4(srcIP, dstIP, originalDatagram[ipv4HeaderLength:])
+			udpLayer := udp.(*layers.UDP)
+			if err := udpLayer.SetNetworkLayerForChecksum(ipLayer); err != nil {
+				glog.Logger.Println("ERROR setting UDP layer checksum!")
+				return
+			}
 
-			originalDatagram[ipv4HeaderLength+6] = byte(cs >> 8)
-			originalDatagram[ipv4HeaderLength+7] = byte(cs)
+			err = gopacket.SerializeLayers(newPacket, gopacket.SerializeOptions{ComputeChecksums: true},
+				&layers.Ethernet{
+					SrcMAC:       srcMAC,
+					DstMAC:       dstMAC,
+					EthernetType: layers.EthernetTypeIPv4,
+				},
+				ipLayer,
+				udpLayer,
+				gopacket.Payload(udpLayer.LayerPayload()),
+			)
+		} else {
+			// TCP as transport layer
+			ipLayer := &layers.IPv4{
+				Version:    ipLayer.Version,
+				IHL:        ipLayer.IHL,
+				TOS:        ipLayer.TOS,
+				Length:     ipLayer.Length,
+				Id:         ipLayer.Id,
+				Flags:      ipLayer.Flags,
+				FragOffset: ipLayer.FragOffset,
+				TTL:        64,
+				Protocol:   ipLayer.Protocol,
+				Checksum:   0,
+				SrcIP:      srcIP,
+				DstIP:      dstIP,
+				Options:    nil,
+				Padding:    nil,
+			}
+
+			tcpLayer := payloadPacket.Layer(layers.LayerTypeTCP).(*layers.TCP)
+			if err := tcpLayer.SetNetworkLayerForChecksum(ipLayer); err != nil {
+				glog.Logger.Println("ERROR setting TCP layer checksum!")
+			}
+
+			err = gopacket.SerializeLayers(newPacket, gopacket.SerializeOptions{ComputeChecksums: true},
+				&layers.Ethernet{
+					SrcMAC:       srcMAC,
+					DstMAC:       dstMAC,
+					EthernetType: layers.EthernetTypeIPv4,
+				},
+				ipLayer,
+				tcpLayer,
+				gopacket.Payload(tcpLayer.LayerPayload()),
+			)
 		}
-
-		// forge the final packet
-		err = gopacket.SerializeLayers(forgedPacket, gopacket.SerializeOptions{},
-			&layers.Ethernet{
-				SrcMAC:       srcMAC,
-				DstMAC:       dstMAC,
-				EthernetType: layers.EthernetTypeIPv4,
-			},
-			// the original IPv4 header, until src/dst IP
-			gopacket.Payload(originalDatagram[0:12]),
-			gopacket.Payload(srcIP),
-			gopacket.Payload(dstIP),
-			// tcp data
-			gopacket.Payload(originalDatagram[ipv4HeaderLength:]),
-		)
 	} else {
+		// encapsulated payload packet begins with IPv6 header
+		payloadPacket := gopacket.NewPacket(payload[:len(payload)-2-padLength], layers.LayerTypeIPv6, gopacket.Default)
+
+		ipLayer := payloadPacket.Layer(layers.LayerTypeIPv6).(*layers.IPv6)
+
 		if g.config.Type == "client" {
-			srcIP = originalDatagram[8:24]
+			srcIP = ipLayer.SrcIP
 			dstIP = net.ParseIP(g.config.ClientIPv6Addr)
 		} else {
 			srcIP = net.ParseIP(g.config.NodeIPv6Addr)
-			dstIP = originalDatagram[24:40]
+			dstIP = ipLayer.DstIP
 		}
 
-		transportProto = int(originalDatagram[6])
-		if transportProto == 6 {
-			cs = csum.TCPIPv6(srcIP, dstIP, originalDatagram[ipv6HeaderLength:])
+		// build the final packet depending on the transport layer
+		if udp := payloadPacket.Layer(layers.LayerTypeUDP); udp != nil {
+			// UDP as the transport layer
+			ipLayer := &layers.IPv6{
+				Version:      ipLayer.Version,
+				TrafficClass: ipLayer.TrafficClass,
+				FlowLabel:    ipLayer.FlowLabel,
+				Length:       ipLayer.Length,
+				NextHeader:   ipLayer.NextHeader,
+				HopLimit:     64,
+				SrcIP:        srcIP,
+				DstIP:        dstIP,
+				HopByHop:     ipLayer.HopByHop,
+			}
 
-			originalDatagram[ipv6HeaderLength+16] = byte(cs >> 8)
-			originalDatagram[ipv6HeaderLength+17] = byte(cs)
-		} else if transportProto == 17 {
-			cs = csum.UDPIPv6(srcIP, dstIP, originalDatagram[ipv6HeaderLength:])
+			udpLayer := udp.(*layers.UDP)
+			if err := udpLayer.SetNetworkLayerForChecksum(ipLayer); err != nil {
+				glog.Logger.Println("ERROR setting UDP layer checksum!")
+				return
+			}
 
-			originalDatagram[ipv6HeaderLength+6] = byte(cs >> 8)
-			originalDatagram[ipv6HeaderLength+7] = byte(cs)
+			err = gopacket.SerializeLayers(newPacket, gopacket.SerializeOptions{ComputeChecksums: true},
+				&layers.Ethernet{
+					SrcMAC:       srcMAC,
+					DstMAC:       dstMAC,
+					EthernetType: layers.EthernetTypeIPv6,
+				},
+				ipLayer,
+				udpLayer,
+				gopacket.Payload(udpLayer.LayerPayload()),
+			)
+		} else {
+			// TCP as transport layer
+			ipLayer := &layers.IPv6{
+				Version:      ipLayer.Version,
+				TrafficClass: ipLayer.TrafficClass,
+				FlowLabel:    ipLayer.FlowLabel,
+				Length:       ipLayer.Length,
+				NextHeader:   ipLayer.NextHeader,
+				HopLimit:     64,
+				SrcIP:        srcIP,
+				DstIP:        dstIP,
+				HopByHop:     ipLayer.HopByHop,
+			}
+
+			tcpLayer := payloadPacket.Layer(layers.LayerTypeTCP).(*layers.TCP)
+			if err := tcpLayer.SetNetworkLayerForChecksum(ipLayer); err != nil {
+				glog.Logger.Println("ERROR setting TCP layer checksum!")
+			}
+
+			err = gopacket.SerializeLayers(newPacket, gopacket.SerializeOptions{ComputeChecksums: true},
+				&layers.Ethernet{
+					SrcMAC:       srcMAC,
+					DstMAC:       dstMAC,
+					EthernetType: layers.EthernetTypeIPv6,
+				},
+				ipLayer,
+				tcpLayer,
+				gopacket.Payload(tcpLayer.LayerPayload()),
+			)
 		}
-
-		err = gopacket.SerializeLayers(forgedPacket, gopacket.SerializeOptions{},
-			&layers.Ethernet{
-				SrcMAC:       srcMAC,
-				DstMAC:       dstMAC,
-				EthernetType: layers.EthernetTypeIPv6,
-			},
-			// the original IPv6 header, until src/dst IP
-			gopacket.Payload(originalDatagram[0:8]),
-			gopacket.Payload(srcIP),
-			gopacket.Payload(dstIP),
-			// tcp data
-			gopacket.Payload(originalDatagram[ipv6HeaderLength:]),
-		)
 	}
 
 	// send packet
 	if err != nil {
 		fmt.Println("Packet creation error: ", err)
 	} else {
-		send <- forgedPacket
+		send <- newPacket
 	}
 }

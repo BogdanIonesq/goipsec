@@ -1,5 +1,6 @@
 {
 	"Type": "server",
+	"ClientPort": 5555,
 	"NodeIPv4Addr": "173.17.17.30",
 	"NodeIPv6Addr": "2001:db8:23:42:1::30",
 	"NodeMAC": "02:42:ac:11:00:30",

@@ -13,6 +13,7 @@ type Config struct {
 	ClientIPv4Addr      string
 	ClientIPv6Addr      string
 	ClientMAC           string
+	ClientPort          int
 	NodeIPv4Addr        string
 	NodeIPv6Addr        string
 	NodeMAC             string
@@ -46,6 +47,10 @@ func (c *Config) init() {
 
 	if c.Type != "client" && c.Type != "server" {
 		glog.Logger.Fatalln("ERROR: unknown gateway type")
+	}
+
+	if c.ClientPort == 0 {
+		glog.Logger.Fatalln("ERROR: client port not set")
 	}
 
 	if c.Type == "client" {

@@ -172,72 +172,59 @@
 		
 	\chapter{Internet Protocol Security}
 	\section{Description }
-		The goal of Internet Protocol Security (IPsec) is to provide security at the network layer, being used worldwide to deploy a variety of VPNs, therefore guaranteeing either secure traffic between networks or in case of remote access, or end-to-end security. It is also often used by other protocols (e.g. L2TP, MIPv6, GRE) to protect some or all of their traffic.
+		The goal of Internet Protocol Security (IPsec) is to provide security from the network layer, being used worldwide to deploy a variety of VPNs, therefore guaranteeing either secure traffic between networks or in case of remote access, or end-to-end security. It is also often used by other protocols (e.g. L2TP, MIPv6, GRE) to protect some or all of their traffic.
 		
-		IPsec is not a single protocol, but rather a set of network protocols, each one with critical and specific tasks, working together to achieve the main goal. The complex IPsec protocol suite can be broken into three essential parts which will be thoroughly explained in the next sections:
+		IPsec is not a single protocol, but rather a set of network protocols, each one with critical and specific tasks, working together to achieve the main goal --- security over networks. The complex IPsec protocol suite can be broken into three essential parts which will be thoroughly explained in the next sections:
 		\begin{itemize}
-			\item \textbf{Security Associations} define the security services and attributes of a connection shared by two network entities
-			\item \textbf{Authentication Header} provides connectionless data integrity and data origin authentication for IP datagrams (hereafter referred to as just integrity) \cite{rfc4302}
-			\item \textbf{Encapsulating Security Payload} can provide both data confidentiality and integrity, and limited traffic flow confidentiality \cite{rfc2406}
+			\item \textbf{Security Associations} define the security attributes (such as cryptographic algorithms, keys, channel lifetime etc.) of a specific connection between two or more network nodes
+			\item \textbf{Authentication Header} guarantees integrity of IP datagrams sent through the secure channel \cite{rfc4302}
+			\item \textbf{Encapsulating Security Payload} assures confidentiality, which is achieved by applying encryption to IP datagrams. ESP can also be configured to employ integrity services, almost as effective as AH \cite{rfc2406}
 		\end{itemize}
 		
-		IPsec has two main modes of operation which define how AH and ESP behave, namely transport mode and tunnel mode. When transport mode is used, only the IP payload is encapsulated and secured by one or both security headers. When employing IPsec in tunnel mode, the whole IP datagram (not just the payload) is encapsulated within another IP datagram. The inner IP header carriers the final IP source and destination addresses, while the outer IP header contains the addresses of the IPsec gateways. The latter can also contain special routing options that dictate how the packet will traverse the public network. Moreover, mixed inner and outer IP versions are allowed, i.e., IPv6 over IPv4 and IPv4 over IPv6 \cite{rfc4302}. IPsec in tunnel mode is generally used to form traditional VPNs.
+		IPsec has two main modes of operation which define how AH and ESP behave, namely \textbf{transport mode} and \textbf{tunnel mode}. When transport mode is used, only the IP payload is secured, by one or both security protocols. When employing IPsec in tunnel mode, the whole IP datagram (not just the payload) is encapsulated within another IP datagram, just like IP in IP. Therefore, IPsec in tunnel mode is generally used to form traditional VPNs.
 		
 		Although a decent part of the IPsec stack is already directly embedded into the Linux kernel, guaranteeing efficient packet processing with minimum overhead, some daemons are still required in user space, generally those regarding Security Associations.
 		
 	\section{Security Associations}
-	IPsec provides data confidentiality and integrity through the two fundamental security protocols previously mentioned, the Authentication Header (AH) and Encapsulating Security Protocol (ESP). However, since a VPN device might handle many secure streams of data with different hosts at the same time, when an IP datagram employing AH and/or ESP arrives, how does it know which set of security parameters (cryptographic algorithm, keys, policies etc.) to use for that particular connection? Moreover, both AH and ESP support a wide variety of cryptographic ciphers, and therefore the two endpoints must agree beforehand on which exact algorithm to employ, and perhaps generate and exchange cryptographic keys. As you can see, many more security attributes and policies must be negotiated and bound to a specific connection between entities before establishing and actually using an IPsec tunnel. This is the purpose of Security Associations. 
+	IPsec provides data confidentiality and integrity through the two fundamental security protocols previously mentioned, the Authentication Header (AH) and Encapsulating Security Protocol (ESP). However, since a VPN device might handle many secure streams of data with different hosts at the same time, when an IP datagram employing AH and/or ESP arrives, how does it know which set of security parameters (cryptographic algorithm, keys, policies etc.) to use for that particular connection? Moreover, both AH and ESP support a wide variety of cryptographic ciphers, and therefore the two endpoints must agree beforehand on which exact algorithm to employ, and perhaps generate and exchange cryptographic keys. As you can see, many more security characteristics and policies must be negotiated and bound to a specific connection between entities before establishing and actually using an IPsec tunnel. This is the purpose of Security Associations. 
 	
-	A Security Association (SA) is a relationship between two or more network entities that describe how the entities will utilize security services to communicate securely. This relationship is represented by a set of information that can be considered a contract between the entities, agreed upon and shared between them \cite{rfc2408}. 
-	
-	An SA describes only one-way traffic, so, in order to secure typical bi-directional communication between two IPsec-enabled systems, a pair of SAs (one in each direction) is required \cite{rfc4301}. Information is stored in a database, where each SA is uniquely identified by a triple consisting of a Security Parameter Index (SPI), an IP Destination Address, and a security protocol (AH or ESP) identifier. The SPI is a random generated 32-bit value used by a receiver to identify the SA to which the incoming packet should be bound (the IP address and protocol will be automatically inferred from the packet headers), and is a mandatory field in the ESP and AH headers.
+	A Security Association (SA) describes a set of attributes and management policies shared by two or more network entities, in order for them to create and maintain a secure channel of communication \cite{rfc2408}. Both AH and ESP (and other network protocols) greatly depend on SAs, because these dictate when the two protocols are employed, and in what fashion. The information contained by SAs is stored in one or more databases, which are interrogated by the IPsec system whenever a secure connection is desired. For this lookup, aside from the IP destination address and the security protocol used (AH and/or ESP), a Security Parameter Index (SPI) is required. The SPI is a randomly generated 32-bit value which identifies to which particular SA a given network packet should be bound, and is therefore a mandatory field in the ESP and AH headers, as we will see later.
 	
 	A model defined in RFC 4301 outlines three databases in order to store various SA information: the Security Policy Database (SPD), the Security Association Database (SAD), and the Peer Authorization Database (PAD) \cite{rfc4301}.
 	
 	\subsection{Security Policy Database}
-		A Security Policy Database (SPD) specifies processing rules for different IP datagrams received by the device. The SPD is consulted during processing of all inbound or outbound traffic, including traffic not protected by IPsec, that traverses the IPsec boundary. For a given packet, three processing rules are defined and stored in the database:
+		A Security Policy Database (SPD) specifies processing rules for both inbound and outbound IP datagrams handled by the device, deciding which can pass through, which can not and which must secured with IPsec. Therefore, the SPD can be considered a sort of firewall. For a given packet, three processing rules are defined and stored in the database:
 		\begin{itemize}
-			\item DISCARD: Packets that match this rule will be immediately discarded by the device.
-			\item BYPASS: Packets that match this rule are allowed to cross the IPsec boundary, not needing any further IPsec processing.
-			\item PROTECT: Packets that match this rule are afforded IPsec protection. In this case, the SPD usually points to an SAD entry which defines the security services to be employed (AH and/or ESP), as well as their attributes (e.g. mode of operation, algorithm).
+			\item DISCARD: Packets that match this rule are not allowed to pass through the device, and will therefore be discarded by the kernel.
+			\item BYPASS: Packets that match this rule are allowed to cross the IPsec boundary unchanged (without employing any security services).
+			\item PROTECT: Packets that match this rule are afforded IPsec protection. In this case, the SAD is used to identify which security protocols to employ to the given packet (AH and/or ESP), along with any attributes they require (e.g. mode of operation, cryptographic algorithms).
 		\end{itemize}
 		
 	\subsection{Security Association Database}
-		To determine what to do with a particular datagram, a device first checks the SPD, in order to see if the datagram should be discarded, allowed to pass through unchanged or offered security services. If the latter is the case, the SAD is interrogated to find the particular security mechanisms to be applied.
+		To determine what to do with a particular datagram, a device first checks the SPD, in order to see if the datagram should be discarded, allowed to pass through unchanged or offered security services. If the latter is the case, the SAD is further interrogated to find the particular security mechanisms to be applied.
 		
-		More formally, a Security Association Database stores the parameters associated
-with one particular SA. For outbound processing, each SAD entry is pointed to by entries in the SPD cache.  For inbound processing, for unicast SAs, the SPI is used either alone to look up an SA or in conjunction with the IPsec protocol type \cite{rfc4301}.
-
-	RFC 4301 describes which data items must be in an SAD entry:
+		More formally, a Security Association Database stores the parameters needed by AH or ESP in order to secure traffic. Therefore, an SAD entry includes the following fields \cite{rfc4301}:
 	\begin{itemize}
-		\item Security Parameter Index (SPI).
-		\item Sequence Number Counter: a 64-bit counter used to generate the Sequence Number field in AH or ESP headers.
-		\item Sequence Counter Overflow: flag indicating whether overflow of the sequence number counter should prevent transmission of additional packets on the SA, or whether rollover is permitted.
-		\item Anti-Replay Window: a 64-bit counter used to determine whether an inbound AH or ESP packet is a replay
-		\item AH Authentication algorithm, key, etc.
+		\item Security Parameter Index (SPI), used to match the same field present in the security header of the network packet.
+		\item Sequence Number Counter, a 64-bit counter used in AH or ESP headers to guarantee protection against replay attacks.
+		\item Sequence Counter Overflow, a flag which decides what happens when the sequence number counter overflows.
+		\item Anti-Replay Window, a 64-bit counter also used for protection against replay attacks.
+		\item AH integrity algorithm, key, etc.
 		\item ESP encryption algorithm, key, mode, IV, etc.
 		\item ESP integrity algorithm, keys, etc.
-		\item ESP combined mode algorithms, key(s), etc.
-		\item Lifetime of the SA: a time interval after which an SA must be replaced with a new SA (and new SPI) or terminated.
+		\item Lifetime of the SA.
 	\end{itemize}
 	
 	\subsection{Peer Authorization Database}
-	The Peer Authorization Database (PAD) simply provides a link between the SPD and a security association management protocol, such as IKE or KINK, along with other constraints and information related to their peers.
+	The Peer Authorization Database (PAD) simply provides a link between the SPD and a security association management protocol which is actually responsible for creating SAs, such as IKE or KINK, along with other constraints and information related to their peers.
 	
 	
 	\subsection{Internet Key Exchange}
-		Internet Key Exchange (IKE) is one of the most often used protocols used to establish, negotiate, modify and delete Security Associations between IPsec nodes. Unlike AH and ESP, IKE is not directly embedded into the Linux kernel, and therefore a daemon in user space is required. Such applications generally implement IKE version 2 (IKEv2), an improvement over the initial IKE version 1 (IKEv1). A draft for IKE version 3 (IKEv3) exists, but it is not yet adopted.
-		
-		IKE is partly based on three other designs:
-		\begin{itemize}
-			\item Internet Security Association and Key Management Protocol (ISAKMP), a framework defining procedures and packet formats to establish, negotiate, modify and delete SAs
-			\item OAKLEY Key Determination Protocol, a generic key exchange protocol
-			\item SKEME, a versatile key exchange technique which provides anonymity, repudiability, and quick key refreshment
-		\end{itemize}
+		Internet Key Exchange (IKE) is one of the most often used protocols used to establish, negotiate, modify and delete Security Associations between IPsec nodes. Unlike AH and ESP, IKE is not directly embedded into the Linux kernel, and therefore a daemon in user space is required. Such applications generally implement IKE version 2 (IKEv2), an improvement over the initial IKE version 1 (IKEv1), addressing many of its weaknesses. A draft for IKE version 3 (IKEv3) exists, but it is not yet adopted.
 		
 		Since both AH and ESP almost always require an SA, IKE is the first protocol employed, representing an initial step towards a secure connection. In order to actually establish an IPsec SA, IKE goes through two phases. 
 		
-		IKE phase 1 is used as a setup stage where the peers agree on how to exchange further information securely. This is done through an ISAKMP SA negotiation, which establishes a secure channel of communication, much needed by phase 2. During this ISAKMP session, the IPsec nodes are authenticated, through either a pre-shared key, digital signature, or public key encryption \cite{rfc5996}, an encryption algorithm and hash algorithm are chosen, and a Diffie-Hellman group is created.
+		IKE phase 1 decides how the involved peers will exchange further information securely. This is done with the help of an Internet Security Association and Key Management Protocol (ISAKMP) SA negotiation, which establishes a secure channel of communication for phase 2. During this ISAKMP session, the IPsec nodes are authenticated (by using either a pre-shared key, digital signature, or public key encryption \cite{rfc5996}), an encryption algorithm and hash algorithm are chosen, and a Diffie-Hellman group is created.
 		
 		In IKE phase 2 the secure tunnel previously established is used to safely negotiate the actual IPsec SA, where the parameters for AH and ESP are decided. 
 		
@@ -256,12 +243,12 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\subsection{Format}
 		The AH format (figure \ref{ah_header}) is quite simple, containing the following fields:
 	\begin{itemize}
-	\item Next Header (8 bits) is used to link headers together and identifies the next protocol used after AH. The value is chosen from the set of IP Protocol Numbers defined by IANA. For example, a value of 4 indicates IPv4, a value of 41 indicates IPv6, and a value of 6 indicates TCP.
-	\item Payload Length (8 bits) specifies the length of AH in 32-bit words (4-byte units), minus 2. Therefore, for example,  if an integrity algorithm yields a 96-bit authentication value, this length field will be the value 4 (3 32-bit word fixed fields plus 3 32-bit words for the ICV, minus 2) \cite{rfc4302}.
+	\item Next Header (8 bits) identifies the next protocol used after AH. The value is chosen from the set of IP Protocol Numbers defined by IANA. For example, a value of 4 indicates IPv4, a value of 41 indicates IPv6, and a value of 6 indicates TCP.
+	\item Payload Length (8 bits) specifies the length of the AH header in 32-bit words \cite{rfc4302}.
 	\item Reserved (16 bits) is not currently used and it is set to zero. 
 	\item Security Parameter Index (32 bits) identifies the SA to which an incoming packet is bound.
-	\item Sequence Number (32 bits) is a counter field that is initialized to zero when an SA is formed between two devices, and then incremented for each datagram sent using that particular SA. This uniquely identifies each datagram on an SA and is used to provide protection against replay attacks by preventing the retransmission of captured datagrams \cite{kozierok2005tcp}.
-	\item Authentication Data (variable size in order to support different hashing algorithms, but it must be a multiple of 32 bits) contains the ICV. The entire header must be a multiple of either 32 bits (for IPv4) or 64 bits (for IPv6), so additional padding may be added to the Authentication Data field if necessary.
+	\item Sequence Number (32 bits) is a counter field initialized to zero, and then incremented for each datagram sent using that particular SA, therefore offering protection in case of replay attacks \cite{kozierok2005tcp}.
+	\item Authentication Data (variable size in order to support different hashing algorithms, but it must be a multiple of 32 bits) contains the ICV. The entire header must be a multiple of either 32 or 64 bits, depending on the IP version used, so additional padding may be added to the Authentication Data field if necessary.
 \end{itemize}			
 		
 		\begin{figure}[h]
@@ -273,10 +260,10 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		
 		\newpage
 		\subsection{Placement}
-		AH placement depends on the IPsec mode of operation and the IP version used (IPv4 or IPv6).
+		AH placement fully depends on the IPsec mode of operation (transport or tunnel) and the IP version used (IPv4 or IPv6).
 		\subsubsection{IPv4}
 		\begin{figure}[h]
-			\includegraphics[width=\textwidth,height=0.14\textheight,keepaspectratio]{original_ipv4_packet}
+			\includegraphics[width=\textwidth,height=0.11\textheight,keepaspectratio]{original_ipv4_packet}
 			\centering
 			\caption{Original IPv4 datagram.}
 		\end{figure}
@@ -284,13 +271,13 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\begin{figure}[h]
 			\includegraphics[width=\textwidth]{ah_ipv4_transport}
 			\centering
-			\caption{In transport mode, AH is placed after the IPv4 header (and any options that it contains), but before the next layer protocol \cite{rfc4302}.}
+			\caption{In transport mode, since only the IP payload is secured, the AH header appears between the IPv4 header (along with its options) and the next layer protocol \cite{rfc4302}.}
 		\end{figure}
 		
 		\begin{figure}[!h]
 			\includegraphics[width=\textwidth]{ah_ipv4_tunnel}
 			\centering
-			\caption{In tunnel mode, the whole IPv4 datagram is encapsulated.}
+			\caption{In tunnel mode, the whole IPv4 datagram is encapsulated and secured, AH appearing before it.}
 		\end{figure}
 		
 		\newpage
@@ -304,7 +291,7 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\begin{figure}[h]
 			\includegraphics[width=\textwidth]{ah_ipv6_transport}
 			\centering
-			\caption{In the transport mode, AH is viewed as an end-to-end payload, and thus should appear after hop-by-hop, routing, and fragmentation extension headers.  The destination options extension header(s) could appear before or after or both before and after the AH header depending on the semantics desired \cite{rfc4302}.}
+			\caption{In the transport mode, AH is usually inserted before the transport layer and IPv6 destination options extension headers, although the latter might also come before \cite{rfc4302}.}
 		\end{figure}
 		
 		\begin{figure}[!h]
@@ -317,9 +304,9 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\subsection{ICV Computation}
 		The ICV is calculated over the majority, but not the entire IP datagram. Fields which are modified in transit between the two gateways must be excluded in order for the receiving IPsec peer to not mistakenly discard the packet (remember that even if a single bit is changed the ICV values will differ). An example is the time to live (TTL) field in the IPv4 header, which is decremented at each hop until the datagram reaches its destination, or until it reaches zero, in which case the datagram is discarded. With this in mind, the AH ICV is computed over the following:
 		\begin{itemize}
-			\item Everything after the AH header.
-			\item The AH header (the ICV is initially set to zero).
-			\item IP or extension headers fields before the AH header that are immutable in transit. For example, in IPv4, the DSCP, ECN, flags, fragment offset, TTL and header checksum fields are excluded.
+			\item Everything after the AH header. In transport mode, this is represented by the transport layer message, which definitely should not change. In tunnel mode, this also includes the inner IP header, which again must remain unchanged (remember that in tunnel mode, between the IPsec endpoints, only the outer IP header is changed and inspected by intermediary nodes).
+			\item The AH header (with the ICV initially set to zero).
+			\item IP or extension headers fields before the AH header that are immutable in transit. For example, in IPv4, the DSCP, ECN, flags, fragment offset, TTL and header checksum fields are excluded, since they might be changed by routers.
 		\end{itemize}
 	
 		\subsection{NAT Incompatibility}
@@ -329,17 +316,17 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\subsection{Description}
 		IPsec AH provides integrity services to IP datagrams, guaranteeing that the packets received by the IPsec peers are intact and not maliciously altered in transit. However, for most applications, this is only one small piece of the puzzle. Although potential eavesdroppers would not be able to change the intercepted IP datagrams, they still can examine their contents. This includes the authentic IP addresses of the communicating peers (present in the only IP header in transport mode, and in the inner IP header in tunnel mode), as well as the transport data, which probably contains the most valuable information in a network packet, such as HTTP data. Therefore, for perfect privacy, AH is clearly not enough. This is where IPsec ESP steps in.
 		
-		Encapsulating Security Payload (ESP) is the second core protocol of the IPsec suite, and probably the most versatile, implementing a mix of security services in IPv4 and IPv6. ESP can be used to provide confidentiality, data origin authentication, connectionless integrity, an anti-replay service, and (limited) traffic flow confidentiality \cite{rfc4303}.
+		Encapsulating Security Payload (ESP) is the second core protocol of the IPsec suite, and probably the most versatile, implementing a mix of security services in IPv4 and IPv6. ESP can be configured to provide only confidentiality, only integrity, or both at the same time \cite{rfc4303}.
 		
-		ESP can be used in conjunction with AH, the first one providing confidentiality while the latter guarantees integrity. However, since ESP can implement both services (i.e. the packets will be protected with regard to confidentiality and integrity), AH is deemed unnecessary in most situations.
+		ESP can be used in conjunction with AH as well, the first one providing confidentiality while the latter guarantees integrity. However, since ESP can implement both services (i.e. the packets will be protected with regard to confidentiality and integrity), AH is deemed unnecessary in most situations.
 		
 		\subsection{Format}
-		ESP provides confidentiality to IP datagrams by encrypting them. To achieve this, ESP repackages the original IP datagrams using a special format. Instead of having just a header and a payload, ESP fields are divided into four components:
+		ESP provides confidentiality to IP datagrams by encrypting them. To achieve this, ESP defines a special format in which it repackages an original IP datagram. Instead of having just a header and a payload, ESP fields are divided into four components:
 		\begin{itemize}
 			\item \textbf{ESP Header.} This contains the SPI and Sequence Number fields, and comes before the encrypted data.
-			\item \textbf{ESP Payload Data.} The encrypted payload data encapsulated by ESP. Depending on the mode of operation, this could either be an upper layer message or an IP datagram. If the encryption scheme employed requires an Initialization Vector (IV), this is added at the beginning.
-			\item \textbf{ESP Trailer.} This section is placed after the encrypted data. It contains padding and two fields, Pad Length and Next Header. Padding is required in order to support encryption algorithms that require the data to be encrypted to have a certain block size. It is also used to make sure the ESP layer is a multiple of 32 bits. The Pad Length field indicates the padding size, in order for the receiver to clearly separate the original message from the padding. Next Header contains the protocol number of the next header in the encapsulated payload.
-			\item \textbf{ESP Authentication Data.} This is optional and is only present if integrity services are also employed by ESP for that particular SA. It contains the ICV calculated over the ESP header, payload and trailer. Unlike AH, this does not include the outer IP header in tunnel mode.
+			\item \textbf{ESP Payload Data.} The data encapsulated by ESP, in encrypted form. Depending on the mode of operation employed, this is either a transport layer message (transport mode) or an entire IP datagram (tunnel mode). Since some encryption schemes also require an Initialization Vector (IV), this is added in plaintext at the beginning if needed.
+			\item \textbf{ESP Trailer.} This section is placed after the encrypted data and contains padding and two fields, Pad Length and Next Header. Padding is required in order to support encryption algorithms that require the data to have a certain block size. The Pad Length field indicates the padding size, in order for the receiver to clearly separate the original message from the padding. Next Header contains the protocol number of the next header in the encapsulated payload.
+			\item \textbf{ESP Authentication Data.} This is optional, representing the ICV value if ESP is also used for integrity services. Unlike AH, the ICV is calculated only over the ESP header, payload and trailer, not including the outer IP header in tunnel mode. However, this avoids the issue previously mentioned when employing AH over NAT.
 		\end{itemize}
 		
 		\begin{figure}[h]
@@ -361,7 +348,7 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\begin{figure}[h]
 			\includegraphics[width=\textwidth]{esp_ipv4_transport}
 			\centering
-			\caption{In transport mode, the ESP header is inserted after the IPv4 header and before the next layer protocol, protecting the upper layer message.}
+			\caption{In transport mode, the ESP header and trailer surround and secure the transport layer message.}
 		\end{figure}
 		
 		\begin{figure}[!htb]
@@ -380,7 +367,7 @@ with one particular SA. For outbound processing, each SAD entry is pointed to by
 		\begin{figure}[!htb]
 			\includegraphics[width=\textwidth]{esp_ipv6_transport}
 			\centering
-			\caption{In transport mode, ESP should appear after hop-by-hop, routing, and fragmentation extension headers.  Destination options extension header(s) could appear before, after, or both before and after the ESP header depending on the semantics desired \cite{rfc4303}.}
+			\caption{In transport mode, ESP protects the upper layer message, in some cases along with the IPv6 destination options extension headers \cite{rfc4303}.}
 		\end{figure}
 		
 		\begin{figure}[!htb]

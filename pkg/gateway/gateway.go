@@ -48,14 +48,15 @@ func (g *gateway) listen() {
 
 	// sniff traffic
 	if g.config.Type == "client" {
-		filter := fmt.Sprintf("((tcp or udp) and (src host %s or %s)) or (udp and src host %s and dst port %d)",
-			g.config.ClientIPv4Addr, g.config.ClientIPv6Addr, g.config.NextGatewayIPv6Addr, 4500)
+		filter := fmt.Sprintf("((tcp or udp) and (src host %s or %s) and src port %d) or (udp and src host %s and dst port %d)",
+			g.config.ClientIPv4Addr, g.config.ClientIPv6Addr, g.config.ClientPort, g.config.NextGatewayIPv6Addr, 4500)
 		err := handle.SetBPFFilter(filter)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		err := handle.SetBPFFilter("tcp or udp")
+		filter := fmt.Sprintf("(tcp and dst port %d) or (udp and src host %s and dst port %d)", g.config.ClientPort, g.config.NextGatewayIPv6Addr, 4500)
+		err := handle.SetBPFFilter(filter)
 		if err != nil {
 			panic(err)
 		}
@@ -68,15 +69,21 @@ func (g *gateway) listen() {
 	for {
 		select {
 		case packet := <-recv:
-			switch udpLayer := packet.Layer(layers.LayerTypeUDP); udpLayer {
+			switch udp := packet.Layer(layers.LayerTypeUDP); udp {
 			case nil:
 				// tcp packet
+				tcpLayer := packet.Layer(layers.LayerTypeTCP).(*layers.TCP)
+
+				glog.Logger.Printf("encrypting TCP packet (src port %d | dst port %d)...\n", tcpLayer.SrcPort, tcpLayer.DstPort)
 				go g.EncryptPacket(packet, send)
 			default:
-				udp, _ := udpLayer.(*layers.UDP)
-				if udp.DstPort == 4500 {
+				// udp packet
+				udpLayer, _ := udp.(*layers.UDP)
+				if udpLayer.DstPort == 4500 {
+					glog.Logger.Println("decrypting ESP packet...")
 					go g.DecryptPacket(packet, send)
 				} else {
+					glog.Logger.Printf("encrypting UDP packet (src port %d | dst port %d)...\n", udpLayer.SrcPort, udpLayer.DstPort)
 					go g.EncryptPacket(packet, send)
 				}
 			}
