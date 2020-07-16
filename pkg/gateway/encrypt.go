@@ -17,7 +17,6 @@ import (
 
 const (
 	networkLayerOffset = 14
-	udpLayerOffset     = 54
 )
 
 func (g *gateway) EncryptPacket(packet gopacket.Packet, send chan gopacket.SerializeBuffer) {

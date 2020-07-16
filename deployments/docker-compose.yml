@@ -16,10 +16,10 @@ services:
       - goipsec-client
     volumes:
       - /home/bogdan/.go/src/goipsec/deployments/logs/tcp/client.pcap:/client.pcap
-    command: bash -c '(tcpdump -w /client.pcap &) &&
+    command: bash -c '(tcpdump -U -w /client.pcap &) &&
       ip -6 route add 2001:db8:23:42:1::40/128 via 2001:db8:23:42:1::20 &&
       sleep 5 &&
-      curl goipsec-tcp-server --local-port 5555 -s -m 5 -6 -w %{time_total}; sleep 20'
+      curl goipsec-tcp-server --local-port 5555 -s -m 5 -6 -w %{time_total}; sleep 10'
 #    command: bash -c '(tcpdump -w /client.pcap &) &&
 #                       sleep 5 &&
 #                       curl web-server --local-port 6666 -s -m 5 -6; sleep 10'
@@ -48,7 +48,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: bash -c '(tcpdump -w /go/src/goipsec/deployments/logs/tcp/client-gateway.pcap &) &&
+    command: bash -c '(tcpdump -U -w /go/src/goipsec/deployments/logs/tcp/client-gateway.pcap &) &&
       ip6tables -I FORWARD -p tcp --dport 80 -s 2001:db8:23:42:1::10 -j DROP &&
       ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP && 
       /go/src/goipsec/cmd/goipsec/main'
@@ -78,7 +78,7 @@ services:
       ip route add default via 173.17.17.99 &&
       ip -6 route del default &&
       ip -6 route add default via 2001:db8:23:42:1::99 &&
-      (tcpdump -w /go/src/goipsec/deployments/logs/tcp/server-gateway.pcap &) &&
+      (tcpdump -U -w /go/src/goipsec/deployments/logs/tcp/server-gateway.pcap &) &&
       ip6tables -I OUTPUT -p tcp --tcp-flags RST RST -j DROP &&
       ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP &&
       rm -f /go/src/goipsec/cmd/goipsec/main &&
@@ -109,7 +109,7 @@ services:
       - ALL
     volumes:
       - /home/bogdan/.go/src/goipsec/deployments/logs/tcp/server.pcap:/server.pcap
-    command: sh -c 'nginx && tcpdump -w /server.pcap'
+    command: sh -c 'nginx && tcpdump -U -w /server.pcap'
     networks:
       default:
         ipv4_address: "173.17.17.40"
