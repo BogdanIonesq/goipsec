@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"encoding/json"
-	"goipsec/pkg/glog"
+	"github.com/BogdanIonesq/goipsec/pkg/glog"
 	"io/ioutil"
 	"net"
 	"os"

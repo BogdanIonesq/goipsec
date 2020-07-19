@@ -6,9 +6,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"fmt"
+	"github.com/BogdanIonesq/goipsec/pkg/glog"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"goipsec/pkg/glog"
 	"net"
 	"os"
 )

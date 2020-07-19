@@ -1,6 +1,8 @@
 package main
 
-import "goipsec/pkg/gateway"
+import (
+	"github.com/BogdanIonesq/goipsec/pkg/gateway"
+)
 
 func main() {
 	gw := gateway.NewGateway()

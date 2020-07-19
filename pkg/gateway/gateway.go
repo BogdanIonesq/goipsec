@@ -2,10 +2,10 @@ package gateway
 
 import (
 	"fmt"
+	"github.com/BogdanIonesq/goipsec/pkg/glog"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"goipsec/pkg/glog"
 	"os"
 )
 

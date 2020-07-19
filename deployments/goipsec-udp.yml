@@ -15,7 +15,7 @@ services:
     depends_on:
       - goipsec-client
     volumes:
-      - /home/bogdan/.go/src/goipsec/deployments/logs/udp/client.pcap:/client.pcap
+      - ./logs/udp/client.pcap:/client.pcap
     command: bash -c '(tcpdump -U -w /client.pcap &) &&
       ip route add 173.17.17.40/32 via 173.17.17.20 &&
       sleep 5 &&
@@ -45,11 +45,11 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec:/go/src/goipsec
-    command: bash -c '(tcpdump -U -w /go/src/goipsec/deployments/logs/udp/client-gateway.pcap &) &&
+      - ../../goipsec:/go/src/github.com/BogdanIonesq/goipsec
+    command: bash -c '(tcpdump -U -w /go/src/github.com/BogdanIonesq/goipsec/deployments/logs/udp/client-gateway.pcap &) &&
       iptables -I FORWARD -p udp --dport 9999 -s 173.17.17.10 -j DROP &&
       ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP && 
-      /go/src/goipsec/cmd/goipsec/main'
+      /go/src/github.com/BogdanIonesq/goipsec/cmd/goipsec/main'
     networks:
       default:
         ipv4_address: "173.17.17.20"
@@ -71,19 +71,19 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec:/go/src/goipsec
+      - ../../goipsec:/go/src/github.com/BogdanIonesq/goipsec
     command: bash -c 'ip route del default &&
       ip route add default via 173.17.17.99 &&
       ip -6 route del default &&
       ip -6 route add default via 2001:db8:23:42:1::99 &&
-      (tcpdump -U -w /go/src/goipsec/deployments/logs/udp/server-gateway.pcap &) &&
+      (tcpdump -U -w /go/src/github.com/BogdanIonesq/goipsec/deployments/logs/udp/server-gateway.pcap &) &&
       ip6tables -I OUTPUT -p ipv6-icmp --icmpv6-type 1/4 -j DROP &&
-      rm -f /go/src/goipsec/cmd/goipsec/main &&
-      cd /go/src/goipsec/cmd/goipsec/ &&
+      rm -f /go/src/github.com/BogdanIonesq/goipsec/cmd/goipsec/main &&
+      cd /go/src/github.com/BogdanIonesq/goipsec/cmd/goipsec/ &&
       go build main.go &&
       ./main'
     healthcheck:
-      test: ["CMD-SHELL", "test -f /go/src/goipsec/cmd/goipsec/main"]
+      test: ["CMD-SHELL", "test -f /go/src/github.com/BogdanIonesq/goipsec/cmd/goipsec/main"]
       interval: 2s
       timeout: 3s
       retries: 3
@@ -107,7 +107,7 @@ services:
     cap_add:
       - ALL
     volumes:
-      - /home/bogdan/.go/src/goipsec/deployments/logs/udp/server.pcap:/server.pcap
+      - ./logs/udp/server.pcap:/server.pcap
     command: bash -c '(tcpdump -U -w /server.pcap &) &&
       nc -ul 9999'
     networks:
